@@ -1,4 +1,5 @@
-import emojiData from "../data/emoji-kitchen.json";
+import fs from "node:fs";
+import { getCompactMetadataPath } from "./metadata-updater";
 
 // Compact index: { "😀": { n: "Grinning", c: { "❤️": "20201001:1f600:2764" } }, ... }
 export interface EmojiIndexData {
@@ -10,7 +11,24 @@ type EmojiIndex = Record<string, EmojiIndexData>;
 
 export function getEmojiIndex(): EmojiIndex {
   console.log("[metadata-manager] Loading emoji index");
-  return emojiData as EmojiIndex;
+  
+  const dynamicPath = getCompactMetadataPath();
+  console.log("[metadata-manager] Looking for metadata at:", dynamicPath);
+
+  if (dynamicPath && fs.existsSync(dynamicPath)) {
+      try {
+          const data = fs.readFileSync(dynamicPath, "utf-8");
+          const index = JSON.parse(data) as EmojiIndex;
+          console.log("[metadata-manager] Loaded index with", Object.keys(index).length, "entries");
+          return index;
+      } catch (e) {
+          console.error("Failed to load dynamic metadata:", e);
+      }
+  } else {
+      console.warn("[metadata-manager] Metadata file not found at:", dynamicPath);
+  }
+
+  return {};
 }
 
 export function emojiToCodepoint(emoji: string): string {

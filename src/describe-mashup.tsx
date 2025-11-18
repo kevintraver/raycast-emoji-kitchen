@@ -5,6 +5,8 @@ import { saveToHistory } from "./lib/storage";
 
 import { copyResizedImage } from "./lib/image-utils";
 
+import { updateMetadata } from "./lib/metadata-updater";
+
 interface SearchResult {
   emoji1: string;
   emoji2: string;
@@ -93,25 +95,33 @@ function searchMashups(query: string): SearchResult[] {
 
 export default function DescribeMashup() {
   const [description, setDescription] = useState("");
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Only clear if we are NOT launching with a specific context (future-proofing)
-    // and if the user explicitly wants a fresh start on every launch.
-    // However, Raycast's default behavior preserves state.
-    // To FORCE clear on every mount (re-open), we can use a ref to track if it's the initial mount.
+    const init = async () => {
+        try {
+            await updateMetadata();
+            EmojiKitchen.reload();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsReady(true);
+        }
+    };
+    init();
 
     const clear = async () => {
       await clearSearchBar();
       setDescription("");
     };
-
+    
     clear();
   }, []);
 
   const results = useMemo(() => {
-    if (!description.trim()) return [];
+    if (!description.trim() || !isReady) return [];
     return searchMashups(description);
-  }, [description]);
+  }, [description, isReady]);
 
   const handleCopy = async (result: SearchResult) => {
     await saveToHistory(result.emoji1, result.emoji2, result.url);

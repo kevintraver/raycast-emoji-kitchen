@@ -16,6 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
+import { updateMetadata } from "./lib/metadata-updater";
 
 import { copyResizedImage } from "./lib/image-utils";
 
@@ -154,9 +155,30 @@ function SecondEmojiScreen(props: { firstEmoji: string }) {
 
 export default function Command() {
   const [searchText, setSearchText] = useState("");
-  const allEmojis = useMemo(() => EmojiKitchen.getAllBaseEmojis(), []);
+  const [allEmojis, setAllEmojis] = useState<Array<{ emoji: string; name: string }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const init = async () => {
+        try {
+            // Load initial (might be empty)
+            setAllEmojis(EmojiKitchen.getAllBaseEmojis());
+            
+            // Trigger update
+            await updateMetadata();
+            
+            // Reload and update state
+            EmojiKitchen.reload();
+            setAllEmojis(EmojiKitchen.getAllBaseEmojis());
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    init();
+
     resetRootSearch = () => setSearchText("");
     return () => {
       resetRootSearch = null;
@@ -169,6 +191,7 @@ export default function Command() {
 
   return (
     <List
+      isLoading={isLoading}
       searchBarPlaceholder="Search first emoji..."
       searchText={searchText}
       onSearchTextChange={setSearchText}
