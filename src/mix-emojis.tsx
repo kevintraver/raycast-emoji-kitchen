@@ -46,7 +46,7 @@ function ResultScreen(props: { first: string; second: string }) {
 
                   const blob = await response.blob();
                   const buffer = await blob.arrayBuffer();
-                  
+
                   const tempFile = path.join(os.tmpdir(), "emoji-mashup.png");
                   fs.writeFileSync(tempFile, Buffer.from(buffer));
 
@@ -54,10 +54,10 @@ function ResultScreen(props: { first: string; second: string }) {
                   await saveToHistory(first, second, mashupData.url);
                   await showToast({ style: Toast.Style.Success, title: "Copied Image!" });
                 } catch (error) {
-                  await showToast({ 
-                    style: Toast.Style.Failure, 
+                  await showToast({
+                    style: Toast.Style.Failure,
                     title: "Failed to Copy Image",
-                    message: error instanceof Error ? error.message : String(error)
+                    message: error instanceof Error ? error.message : String(error),
                   });
                 }
               }}
