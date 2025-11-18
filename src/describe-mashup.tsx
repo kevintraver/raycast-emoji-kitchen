@@ -1,5 +1,5 @@
-import { List, ActionPanel, Action, showToast, Toast, Icon } from "@raycast/api";
-import { useState, useMemo } from "react";
+import { List, ActionPanel, Action, showToast, Toast, Icon, clearSearchBar } from "@raycast/api";
+import { useState, useMemo, useEffect } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
 
@@ -89,8 +89,22 @@ function searchMashups(query: string): SearchResult[] {
   return results.slice(0, 10); // Return top 10 results
 }
 
-export default function DescribeMashup() {
+export default function DescribeMashup(props: { launchContext?: { search?: string } }) {
   const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    // Only clear if we are NOT launching with a specific context (future-proofing)
+    // and if the user explicitly wants a fresh start on every launch.
+    // However, Raycast's default behavior preserves state.
+    // To FORCE clear on every mount (re-open), we can use a ref to track if it's the initial mount.
+    
+    const clear = async () => {
+      await clearSearchBar();
+      setDescription("");
+    };
+    
+    clear();
+  }, []);
 
   const results = useMemo(() => {
     if (!description.trim()) return [];
@@ -102,11 +116,27 @@ export default function DescribeMashup() {
     await showToast({ style: Toast.Style.Success, title: "Copied!" });
   };
 
+  const handleClearSearch = async () => {
+    setDescription("");
+    await clearSearchBar();
+  };
+
   return (
     <List
+      searchText={description}
       searchBarPlaceholder="Describe emoji mashup (e.g., 'zombie in love')..."
       onSearchTextChange={setDescription}
       throttle
+      actions={
+        <ActionPanel>
+          <Action
+            title="New Search"
+            icon={Icon.ArrowCounterClockwise}
+            shortcut={{ modifiers: ["cmd"], key: "n" }}
+            onAction={handleClearSearch}
+          />
+        </ActionPanel>
+      }
     >
       {results.length > 0 ? (
         results.map((result, index) => (
@@ -119,6 +149,12 @@ export default function DescribeMashup() {
               <ActionPanel>
                 <Action.CopyToClipboard content={result.url} onCopy={() => handleCopy(result)} title="Copy Image URL" />
                 <Action.OpenInBrowser url={result.url} title="Open in Browser" />
+                <Action
+                  title="New Search"
+                  icon={Icon.ArrowCounterClockwise}
+                  shortcut={{ modifiers: ["cmd"], key: "n" }}
+                  onAction={handleClearSearch}
+                />
               </ActionPanel>
             }
           />
@@ -131,6 +167,16 @@ export default function DescribeMashup() {
             description.trim()
               ? `Try different keywords (e.g., 'happy', 'cat', 'heart')`
               : "Examples: 'zombie in love', 'angry cat', 'happy birthday'"
+          }
+          actions={
+            <ActionPanel>
+              <Action
+                title="New Search"
+                icon={Icon.ArrowCounterClockwise}
+                shortcut={{ modifiers: ["cmd"], key: "n" }}
+                onAction={handleClearSearch}
+              />
+            </ActionPanel>
           }
         />
       )}
