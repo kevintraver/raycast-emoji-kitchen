@@ -15,7 +15,7 @@ class EmojiKitchen {
     this.ensureLoaded();
     return Object.entries(this.index!).map(([emoji, data]) => ({
       emoji,
-      name: data.name,
+      name: data.n,
     }));
   }
 
@@ -24,9 +24,9 @@ class EmojiKitchen {
     const data = this.index![emoji];
     if (!data) return [];
 
-    return data.combos.map((comboEmoji) => ({
+    return data.c.map((comboEmoji) => ({
       emoji: comboEmoji,
-      name: this.index![comboEmoji]?.name || comboEmoji,
+      name: this.index![comboEmoji]?.n || comboEmoji,
     }));
   }
 
@@ -34,11 +34,15 @@ class EmojiKitchen {
     this.ensureLoaded();
     const data1 = this.index![emoji1];
     const data2 = this.index![emoji2];
-    return !!(data1?.combos.includes(emoji2) || data2?.combos.includes(emoji1));
+    return !!(data1?.c.includes(emoji2) || data2?.c.includes(emoji1));
   }
 
   static getMashupData(emoji1: string, emoji2: string): { url: string } | null {
-    if (!this.isValidCombo(emoji1, emoji2)) return null;
+    if (!this.isValidCombo(emoji1, emoji2)) {
+      console.log("[emoji-kitchen] Invalid combo:", emoji1, "+", emoji2);
+      return null;
+    }
+    
     return { url: buildMashupUrl(emoji1, emoji2) };
   }
 
@@ -47,7 +51,7 @@ class EmojiKitchen {
     const pairs: string[] = [];
 
     for (const [left, data] of Object.entries(this.index!)) {
-      for (const right of data.combos) {
+      for (const right of data.c) {
         pairs.push(`${left}+${right}`);
       }
     }

@@ -1,9 +1,9 @@
 import emojiData from "../data/emoji-kitchen.json";
 
-// Index format: { "😀": { name: "Grinning", combos: ["❤️", "🔥"] }, ... }
+// Minimal index: { "😀": { n: "Grinning", c: ["❤️", "🔥"] }, ... }
 export interface EmojiIndexData {
-  name: string;
-  combos: string[];
+  n: string; // name
+  c: string[]; // combos
 }
 
 type EmojiIndex = Record<string, EmojiIndexData>;
@@ -26,11 +26,17 @@ export function emojiToCodepoint(emoji: string): string {
   return codePoints.join("-");
 }
 
-// Build mashup URL using most common date pattern
+// Build mashup URL - try multiple date patterns
 export function buildMashupUrl(emoji1: string, emoji2: string): string {
   const cp1 = emojiToCodepoint(emoji1);
   const cp2 = emojiToCodepoint(emoji2);
+  
+  // Use most common date that works for majority of combinations
   const date = "20201001";
-
-  return `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${cp1}/u${cp1}_u${cp2}.png`;
+  
+  const url = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${cp1}/u${cp1}_u${cp2}.png`;
+  
+  console.log("[metadata-manager] Built URL for", emoji1, "+", emoji2, "=>", url);
+  
+  return url;
 }

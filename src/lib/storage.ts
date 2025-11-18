@@ -4,11 +4,7 @@ import { MashupHistoryItem } from "../types";
 const HISTORY_KEY = "emoji-kitchen-history";
 const MAX_HISTORY = 50;
 
-export async function saveToHistory(
-  leftEmoji: string,
-  rightEmoji: string,
-  mashupUrl: string,
-): Promise<void> {
+export async function saveToHistory(leftEmoji: string, rightEmoji: string, mashupUrl: string): Promise<void> {
   const history = await getHistory();
   const newItem: MashupHistoryItem = {
     leftEmoji,
@@ -35,4 +31,3 @@ export async function removeFromHistory(timestamp: number): Promise<void> {
   const filtered = history.filter((item) => item.timestamp !== timestamp);
   await LocalStorage.setItem(HISTORY_KEY, JSON.stringify(filtered));
 }
-
