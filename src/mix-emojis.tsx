@@ -11,6 +11,9 @@ import {
   Clipboard,
 } from "@raycast/api";
 import { useState, useMemo } from "react";
+import fs from "fs";
+import os from "os";
+import path from "path";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
 
@@ -19,9 +22,7 @@ function ResultScreen(props: { first: string; second: string }) {
   const { pop } = useNavigation();
   const mashupData = EmojiKitchen.getMashupData(first, second);
 
-  const markdown = mashupData
-    ? `![Emoji Mashup](${mashupData.url})`
-    : "# No mashup available 😢";
+  const markdown = mashupData ? `![Emoji Mashup](${mashupData.url})` : "# No mashup available 😢";
 
   return (
     <Detail
@@ -35,16 +36,29 @@ function ResultScreen(props: { first: string; second: string }) {
               icon={Icon.Clipboard}
               onAction={async () => {
                 try {
-                  // Fetch the image and copy it to clipboard
+                  await showToast({ style: Toast.Style.Animated, title: "Downloading image..." });
+
                   const response = await fetch(mashupData.url);
+
+                  if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                  }
+
                   const blob = await response.blob();
                   const buffer = await blob.arrayBuffer();
+                  
+                  const tempFile = path.join(os.tmpdir(), "emoji-mashup.png");
+                  fs.writeFileSync(tempFile, Buffer.from(buffer));
 
-                  await Clipboard.copy({ file: Buffer.from(buffer) });
+                  await Clipboard.copy({ file: tempFile });
                   await saveToHistory(first, second, mashupData.url);
                   await showToast({ style: Toast.Style.Success, title: "Copied Image!" });
-                } catch {
-                  await showToast({ style: Toast.Style.Failure, title: "Failed to Copy Image" });
+                } catch (error) {
+                  await showToast({ 
+                    style: Toast.Style.Failure, 
+                    title: "Failed to Copy Image",
+                    message: error instanceof Error ? error.message : String(error)
+                  });
                 }
               }}
             />
