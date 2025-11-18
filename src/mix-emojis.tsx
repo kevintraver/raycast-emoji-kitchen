@@ -1,21 +1,24 @@
 import {
   Action,
   ActionPanel,
-  List,
+  clearSearchBar,
+  Clipboard,
   Detail,
   Icon,
+  List,
   showToast,
   Toast,
-  clearSearchBar,
   useNavigation,
-  Clipboard,
 } from "@raycast/api";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
+
+// Global callback to reset the root search state
+let resetRootSearch: (() => void) | null = null;
 
 function ResultScreen(props: { first: string; second: string }) {
   const { first, second } = props;
@@ -74,7 +77,9 @@ function ResultScreen(props: { first: string; second: string }) {
             title="Start over"
             icon={Icon.RotateAntiClockwise}
             shortcut={{ modifiers: ["cmd"], key: "n" }}
-            onAction={() => {
+            onAction={async () => {
+              if (resetRootSearch) resetRootSearch();
+              await clearSearchBar();
               pop();
               pop();
             }}
@@ -134,6 +139,13 @@ function SecondEmojiScreen(props: { firstEmoji: string }) {
 export default function Command() {
   const [searchText, setSearchText] = useState("");
   const allEmojis = useMemo(() => EmojiKitchen.getAllBaseEmojis(), []);
+
+  useEffect(() => {
+    resetRootSearch = () => setSearchText("");
+    return () => {
+      resetRootSearch = null;
+    };
+  }, []);
 
   const filtered = allEmojis.filter(
     (i) => i.name.toLowerCase().includes(searchText.toLowerCase()) || i.emoji.includes(searchText),
