@@ -3,6 +3,8 @@ import { useState, useMemo, useEffect } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
 
+import { copyResizedImage } from "./lib/image-utils";
+
 interface SearchResult {
   emoji1: string;
   emoji2: string;
@@ -89,7 +91,7 @@ function searchMashups(query: string): SearchResult[] {
   return results.slice(0, 10); // Return top 10 results
 }
 
-export default function DescribeMashup(props: { launchContext?: { search?: string } }) {
+export default function DescribeMashup() {
   const [description, setDescription] = useState("");
 
   useEffect(() => {
@@ -97,12 +99,12 @@ export default function DescribeMashup(props: { launchContext?: { search?: strin
     // and if the user explicitly wants a fresh start on every launch.
     // However, Raycast's default behavior preserves state.
     // To FORCE clear on every mount (re-open), we can use a ref to track if it's the initial mount.
-    
+
     const clear = async () => {
       await clearSearchBar();
       setDescription("");
     };
-    
+
     clear();
   }, []);
 
@@ -149,6 +151,18 @@ export default function DescribeMashup(props: { launchContext?: { search?: strin
               <ActionPanel>
                 <Action.CopyToClipboard content={result.url} onCopy={() => handleCopy(result)} title="Copy Image URL" />
                 <Action.OpenInBrowser url={result.url} title="Open in Browser" />
+                <Action
+                  title="Copy Small Sticker (256Px)"
+                  icon={Icon.Image}
+                  shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+                  onAction={() =>
+                    copyResizedImage(result.url, {
+                      width: 256,
+                      emoji1: result.emoji1,
+                      emoji2: result.emoji2,
+                    })
+                  }
+                />
                 <Action
                   title="New Search"
                   icon={Icon.ArrowCounterClockwise}

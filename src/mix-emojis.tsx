@@ -1,3 +1,6 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import {
   Action,
   ActionPanel,
@@ -11,11 +14,10 @@ import {
   useNavigation,
 } from "@raycast/api";
 import { useEffect, useMemo, useState } from "react";
-import fs from "fs";
-import os from "os";
-import path from "path";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
+
+import { copyResizedImage } from "./lib/image-utils";
 
 // Global callback to reset the root search state
 let resetRootSearch: (() => void) | null = null;
@@ -34,37 +36,51 @@ function ResultScreen(props: { first: string; second: string }) {
       actions={
         <ActionPanel>
           {mashupData && (
-            <Action
-              title="Copy Mashup Image"
-              icon={Icon.Clipboard}
-              onAction={async () => {
-                try {
-                  await showToast({ style: Toast.Style.Animated, title: "Downloading image..." });
+            <>
+              <Action
+                title="Copy Mashup Image"
+                icon={Icon.Clipboard}
+                onAction={async () => {
+                  try {
+                    await showToast({ style: Toast.Style.Animated, title: "Downloading image..." });
 
-                  const response = await fetch(mashupData.url);
+                    const response = await fetch(mashupData.url);
 
-                  if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    if (!response.ok) {
+                      throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const blob = await response.blob();
+                    const buffer = await blob.arrayBuffer();
+
+                    const tempFile = path.join(os.tmpdir(), "emoji-mashup.png");
+                    fs.writeFileSync(tempFile, Buffer.from(buffer));
+
+                    await Clipboard.copy({ file: tempFile });
+                    await saveToHistory(first, second, mashupData.url);
+                    await showToast({ style: Toast.Style.Success, title: "Copied Image!" });
+                  } catch (error) {
+                    await showToast({
+                      style: Toast.Style.Failure,
+                      title: "Failed to Copy Image",
+                      message: error instanceof Error ? error.message : String(error),
+                    });
                   }
-
-                  const blob = await response.blob();
-                  const buffer = await blob.arrayBuffer();
-
-                  const tempFile = path.join(os.tmpdir(), "emoji-mashup.png");
-                  fs.writeFileSync(tempFile, Buffer.from(buffer));
-
-                  await Clipboard.copy({ file: tempFile });
-                  await saveToHistory(first, second, mashupData.url);
-                  await showToast({ style: Toast.Style.Success, title: "Copied Image!" });
-                } catch (error) {
-                  await showToast({
-                    style: Toast.Style.Failure,
-                    title: "Failed to Copy Image",
-                    message: error instanceof Error ? error.message : String(error),
-                  });
+                }}
+              />
+              <Action
+                title="Copy Small Sticker (256Px)"
+                icon={Icon.Image}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+                onAction={() =>
+                  copyResizedImage(mashupData.url, {
+                    width: 256,
+                    emoji1: first,
+                    emoji2: second,
+                  })
                 }
-              }}
-            />
+              />
+            </>
           )}
           {mashupData && <Action.OpenInBrowser title="Open in Browser" url={mashupData.url} />}
           <Action
