@@ -46,7 +46,7 @@
 - **Performance**: All lookups are O(1) using emoji string keys. No async loading needed - data loads synchronously from bundled JSON.
 
 ## Commands
-1. **Mix Two Emojis** (`mix-emojis.tsx`) - Two-step emoji picker; shows only valid combinations in second step
+1. **Mix Emojis** (`mix-emojis.tsx`) - Two-step emoji picker; shows only valid combinations in second step
 2. **Describe Mashup** (`describe-mashup.tsx`) - Natural language search (basic MVP, ready for AI enhancement)
 3. **Recent Mashups** (`recent-mashups.tsx`) - History viewer with LocalStorage persistence (max 50 items)
 

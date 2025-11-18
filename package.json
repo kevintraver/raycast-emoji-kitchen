@@ -13,7 +13,7 @@
   "commands": [
     {
       "name": "mix-emojis",
-      "title": "Mix Two Emojis",
+      "title": "Mix Emojis",
       "subtitle": "Emoji Kitchen",
       "description": "Manually select two emojis to create a mashup",
       "mode": "view"
