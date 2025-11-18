@@ -171,7 +171,7 @@ export default function MixEmojis() {
                 icon={Icon.ArrowRight}
                  onAction={() => {
                    setFirstEmoji(item.emoji);
-                   // Step 2 search is already empty by default
+                   setStep2Search("");
                  }}
               />
             </ActionPanel>
