@@ -36,7 +36,7 @@ interface RawMetadata {
 }
 
 function codepointToEmoji(codepoint: string): string {
-  return String.fromCodePoint(...codepoint.split("-").map((p) => parseInt(`0x${p}`)));
+  return String.fromCodePoint(...codepoint.split("-").map((p) => parseInt(p, 16)));
 }
 
 function formatName(alt: string): string {
