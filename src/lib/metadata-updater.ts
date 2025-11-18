@@ -75,20 +75,50 @@ try {
 async function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
-    https.get(url, (response) => {
+
+    function handleResponse(response: import("http").IncomingMessage) {
+      // Handle Redirects
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        if (response.headers.location) {
+          https.get(response.headers.location, handleResponse).on("error", onError);
+          return;
+        }
+      }
+
       if (response.statusCode !== 200) {
+        file.close();
+        fs.unlink(dest, () => {});
         reject(new Error(`Failed to download: ${response.statusCode}`));
         return;
       }
+
+      const totalBytes = parseInt(response.headers["content-length"] || "0", 10);
+      let receivedBytes = 0;
+
+      response.on("data", (chunk) => {
+        receivedBytes += chunk.length;
+      });
+
       response.pipe(file);
+
       file.on("finish", () => {
         file.close();
-        resolve();
+        if (totalBytes > 0 && receivedBytes !== totalBytes) {
+          fs.unlink(dest, () => {});
+          reject(new Error(`Download incomplete: ${receivedBytes}/${totalBytes} bytes`));
+        } else {
+          resolve();
+        }
       });
-    }).on("error", (err) => {
+    }
+
+    function onError(err: Error) {
+      file.close();
       fs.unlink(dest, () => {});
       reject(err);
-    });
+    }
+
+    https.get(url, handleResponse).on("error", onError);
   });
 }
 
@@ -115,14 +145,31 @@ export async function updateMetadata(): Promise<void> {
       console.log("Downloading raw metadata from:", RAW_METADATA_URL);
       await downloadFile(RAW_METADATA_URL, RAW_METADATA_PATH);
       console.log("Download complete. Processing...");
-      await processMetadata(RAW_METADATA_PATH, COMPACT_METADATA_PATH);
-      console.log("Metadata processing complete.");
+      
+      try {
+        await processMetadata(RAW_METADATA_PATH, COMPACT_METADATA_PATH);
+        console.log("Metadata processing complete.");
+      } catch (e) {
+        console.error("Processing failed, deleting potentially corrupted raw file.");
+        if (fs.existsSync(RAW_METADATA_PATH)) {
+            fs.unlinkSync(RAW_METADATA_PATH);
+        }
+        throw e;
+      }
     } else {
       console.log("Raw metadata already exists.");
       // Ensure compact metadata also exists
       if (!fs.existsSync(COMPACT_METADATA_PATH)) {
           console.log("Compact metadata missing. Reprocessing...");
-          await processMetadata(RAW_METADATA_PATH, COMPACT_METADATA_PATH);
+          try {
+            await processMetadata(RAW_METADATA_PATH, COMPACT_METADATA_PATH);
+          } catch (e) {
+            console.error("Processing failed (existing raw file), deleting corrupted raw file.");
+            if (fs.existsSync(RAW_METADATA_PATH)) {
+                fs.unlinkSync(RAW_METADATA_PATH);
+            }
+            throw e;
+          }
       }
     }
   } catch (error) {
