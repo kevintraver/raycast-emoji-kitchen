@@ -3,205 +3,138 @@ import { useState } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
 
-type Step = "first" | "second" | "result";
-
 export default function MixEmojis() {
-  const [step, setStep] = useState<Step>("first");
-  const [firstEmoji, setFirstEmoji] = useState("");
-  const [secondEmoji, setSecondEmoji] = useState("");
-
-  const startOver = () => {
-    setStep("first");
-    setFirstEmoji("");
-    setSecondEmoji("");
-  };
-
-  const tryAnotherWithSameFirst = () => {
-    setStep("second");
-    setSecondEmoji("");
-  };
-
-  // Step 1: Select first emoji
-  if (step === "first") {
-    return (
-      <SelectFirstEmoji
-        onSelect={(emoji) => {
-          setFirstEmoji(emoji);
-          setStep("second");
-        }}
-      />
-    );
-  }
-
-  // Step 2: Select second emoji from valid combinations
-  if (step === "second") {
-    return (
-      <SelectSecondEmoji
-        firstEmoji={firstEmoji}
-        onSelect={(emoji) => {
-          setSecondEmoji(emoji);
-          setStep("result");
-        }}
-        onBack={startOver}
-      />
-    );
-  }
+  const [firstEmoji, setFirstEmoji] = useState<string | null>(null);
+  const [secondEmoji, setSecondEmoji] = useState<string | null>(null);
 
   // Step 3: Show result
-  return <ResultScreen firstEmoji={firstEmoji} secondEmoji={secondEmoji} onStartOver={startOver} onTryAnother={tryAnotherWithSameFirst} />;
-}
+  if (firstEmoji && secondEmoji) {
+    const mashupData = EmojiKitchen.getMashupData(firstEmoji, secondEmoji);
 
-function SelectFirstEmoji({ onSelect }: { onSelect: (emoji: string) => void }) {
-  const allEmojis = EmojiKitchen.getAllBaseEmojis();
-
-  return (
-    <List searchBarPlaceholder="Search first emoji...">
-      {allEmojis.map((emoji) => (
-        <List.Item
-          key={emoji}
-          icon={emoji}
-          title={emoji}
+    if (!mashupData) {
+      return (
+        <Detail
+          markdown="# Error\n\nCouldn't generate mashup"
           actions={
             <ActionPanel>
-              <Action title="Select" icon={Icon.ArrowRight} onAction={() => onSelect(emoji)} />
+              <Action
+                title="Start over"
+                onAction={() => {
+                  setFirstEmoji(null);
+                  setSecondEmoji(null);
+                }}
+              />
             </ActionPanel>
           }
         />
-      ))}
-    </List>
-  );
-}
+      );
+    }
 
-function SelectSecondEmoji({
-  firstEmoji,
-  onSelect,
-  onBack,
-}: {
-  firstEmoji: string;
-  onSelect: (emoji: string) => void;
-  onBack: () => void;
-}) {
-  const validCombinations = EmojiKitchen.getValidCombinations(firstEmoji);
+    const markdown = `# ${firstEmoji} + ${secondEmoji}
 
-  if (validCombinations.length === 0) {
-    return (
-      <List navigationTitle={`Mix with ${firstEmoji}`}>
-        <List.EmptyView
-          icon={Icon.EmojiSad}
-          title="No combinations available"
-          description={`${firstEmoji} doesn't have any mashups`}
-          actions={
-            <ActionPanel>
-              <Action title="Pick Different Emoji" icon={Icon.ArrowLeft} onAction={onBack} />
-            </ActionPanel>
-          }
-        />
-      </List>
-    );
-  }
+![Mashup](${mashupData.url})
 
-  return (
-    <List searchBarPlaceholder={`Search to mix with ${firstEmoji}...`} navigationTitle={`Mix with ${firstEmoji}`}>
-      <List.Section title={`Available Combinations (${validCombinations.length})`}>
-        {validCombinations.map((emoji) => {
-          const mashupData = EmojiKitchen.getMashupData(firstEmoji, emoji);
-          if (!mashupData) return null;
+**Your emoji mashup is ready!**`;
 
-          return (
-            <List.Item
-              key={emoji}
-              icon={emoji}
-              title={emoji}
-              accessories={[
-                {
-                  icon: { source: mashupData.url },
-                  tooltip: "Mashup preview",
-                },
-              ]}
-              actions={
-                <ActionPanel>
-                  <Action title="Create Mashup" icon={Icon.CheckCircle} onAction={() => onSelect(emoji)} />
-                  <Action
-                    title="Change First Emoji"
-                    icon={Icon.ArrowLeft}
-                    onAction={onBack}
-                    shortcut={{ modifiers: ["cmd"], key: "backspace" }}
-                  />
-                </ActionPanel>
-              }
-            />
-          );
-        })}
-      </List.Section>
-    </List>
-  );
-}
-
-function ResultScreen({
-  firstEmoji,
-  secondEmoji,
-  onStartOver,
-  onTryAnother,
-}: {
-  firstEmoji: string;
-  secondEmoji: string;
-  onStartOver: () => void;
-  onTryAnother: () => void;
-}) {
-  const mashupData = EmojiKitchen.getMashupData(firstEmoji, secondEmoji);
-
-  if (!mashupData) {
     return (
       <Detail
-        markdown="# Error\n\nCouldn't find mashup data"
+        markdown={markdown}
         actions={
           <ActionPanel>
-            <Action title="Start over" icon={Icon.RotateAntiClockwise} onAction={onStartOver} />
+            <Action.CopyToClipboard
+              title="Copy Mashup URL"
+              content={mashupData.url}
+              onCopy={async () => {
+                await saveToHistory(firstEmoji, secondEmoji, mashupData.url);
+                await showToast({
+                  style: Toast.Style.Success,
+                  title: "Copied!",
+                  message: `${firstEmoji} + ${secondEmoji}`,
+                });
+              }}
+            />
+            <Action.OpenInBrowser title="Open in Browser" url={mashupData.url} />
+            <Action
+              title="Try Another"
+              icon={Icon.Repeat}
+              onAction={() => setSecondEmoji(null)}
+              shortcut={{ modifiers: ["cmd"], key: "t" }}
+            />
+            <Action
+              title="Start over"
+              icon={Icon.RotateAntiClockwise}
+              onAction={() => {
+                setFirstEmoji(null);
+                setSecondEmoji(null);
+              }}
+              shortcut={{ modifiers: ["cmd"], key: "n" }}
+            />
           </ActionPanel>
         }
       />
     );
   }
 
-  async function handleCopy() {
-    await saveToHistory(firstEmoji, secondEmoji, mashupData!.url);
-    await showToast({
-      style: Toast.Style.Success,
-      title: "Copied to clipboard!",
-      message: `${firstEmoji} + ${secondEmoji}`,
-    });
+  // Step 2: Select second emoji
+  if (firstEmoji) {
+    const validCombinations = EmojiKitchen.getValidCombinations(firstEmoji);
+
+    return (
+      <List searchBarPlaceholder={`Mix ${firstEmoji} with...`} navigationTitle={`Mix with ${firstEmoji}`}>
+        {validCombinations.length > 0 ? (
+          <List.Section title={`Available Combinations (${validCombinations.length})`}>
+            {validCombinations.map((item) => (
+              <List.Item
+                key={item.emoji}
+                icon={item.emoji}
+                title={item.name}
+                actions={
+                  <ActionPanel>
+                    <Action title="Select" icon={Icon.CheckCircle} onAction={() => setSecondEmoji(item.emoji)} />
+                    <Action
+                      title="Change First Emoji"
+                      icon={Icon.ArrowLeft}
+                      onAction={() => setFirstEmoji(null)}
+                      shortcut={{ modifiers: ["cmd"], key: "backspace" }}
+                    />
+                  </ActionPanel>
+                }
+              />
+            ))}
+          </List.Section>
+        ) : (
+          <List.EmptyView
+            title="No combinations available"
+            description={`${firstEmoji} doesn't have any mashups`}
+            icon={Icon.EmojiSad}
+            actions={
+              <ActionPanel>
+                <Action title="Pick Different Emoji" onAction={() => setFirstEmoji(null)} />
+              </ActionPanel>
+            }
+          />
+        )}
+      </List>
+    );
   }
 
-  const markdown = `# ${firstEmoji} + ${secondEmoji}
-
-![Emoji Mashup](${mashupData.url})
-
-**Your emoji mashup is ready!**
-
-Copy the URL to share this mashup with friends.`;
+  // Step 1: Select first emoji
+  const allEmojis = EmojiKitchen.getAllBaseEmojis();
 
   return (
-    <Detail
-      markdown={markdown}
-      navigationTitle="Mashup Result"
-      actions={
-        <ActionPanel>
-          <Action.CopyToClipboard title="Copy Mashup URL" content={mashupData.url} onCopy={handleCopy} />
-          <Action.OpenInBrowser title="Open in Browser" url={mashupData.url} shortcut={{ modifiers: ["cmd"], key: "o" }} />
-          <Action
-            title="Try Another with Same First"
-            icon={Icon.Repeat}
-            onAction={onTryAnother}
-            shortcut={{ modifiers: ["cmd"], key: "t" }}
-          />
-          <Action
-            title="Start over"
-            icon={Icon.RotateAntiClockwise}
-            onAction={onStartOver}
-            shortcut={{ modifiers: ["cmd"], key: "n" }}
-          />
-        </ActionPanel>
-      }
-    />
+    <List searchBarPlaceholder="Search first emoji...">
+      {allEmojis.map((item) => (
+        <List.Item
+          key={item.emoji}
+          icon={item.emoji}
+          title={item.name}
+          actions={
+            <ActionPanel>
+              <Action title="Select" icon={Icon.ArrowRight} onAction={() => setFirstEmoji(item.emoji)} />
+            </ActionPanel>
+          }
+        />
+      ))}
+    </List>
   );
 }
