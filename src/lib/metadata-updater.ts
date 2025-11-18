@@ -98,7 +98,8 @@ async function processMetadata(rawPath: string, compactPath: string): Promise<vo
   fs.writeFileSync(scriptPath, WORKER_SCRIPT);
 
   try {
-    await execFileAsync("node", [scriptPath, rawPath, compactPath]);
+    // Use process.execPath to ensure we use the correct node executable
+    await execFileAsync(process.execPath, [scriptPath, rawPath, compactPath]);
   } finally {
     if (fs.existsSync(scriptPath)) {
         fs.unlinkSync(scriptPath);

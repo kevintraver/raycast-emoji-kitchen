@@ -11,6 +11,12 @@ class EmojiKitchen {
     }
   }
 
+  static reload(): void {
+    console.log("[emoji-kitchen] Reloading index...");
+    this.index = null;
+    this.ensureLoaded();
+  }
+
   static getAllBaseEmojis(): Array<{ emoji: string; name: string }> {
     this.ensureLoaded();
     return Object.entries(this.index!).map(([emoji, data]) => ({
