@@ -1,23 +1,28 @@
-export interface RawMetadata {
+export interface EmojiMetadata {
   knownSupportedEmoji: string[];
   data: {
-    [codepoint: string]: {
-      combinations: {
-        [otherCodepoint: string]: Array<{
-          gStaticUrl: string;
-          isLatest: boolean;
-        }>;
-      };
-    };
+    [emojiCodepoint: string]: EmojiData;
   };
 }
 
-export interface ProcessedMetadata {
-  [leftEmoji: string]: {
-    [rightEmoji: string]: {
-      url: string;
-    };
-  };
+export interface EmojiData {
+  alt: string;
+  keywords: string[];
+  emojiCodepoint: string;
+  gBoardOrder: number;
+  combinations: { [otherEmojiCodepoint: string]: EmojiCombination[] };
+}
+
+export interface EmojiCombination {
+  gStaticUrl: string;
+  alt: string;
+  leftEmoji: string;
+  leftEmojiCodepoint: string;
+  rightEmoji: string;
+  rightEmojiCodepoint: string;
+  date: string;
+  isLatest: boolean;
+  gBoardOrder: number;
 }
 
 export interface MashupHistoryItem {
