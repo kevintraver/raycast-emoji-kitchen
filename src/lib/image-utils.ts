@@ -1,9 +1,9 @@
 import { Clipboard, showToast, Toast } from "@raycast/api";
-import fs from "fs";
-import os from "os";
-import path from "path";
-import { execFile } from "child_process";
-import { promisify } from "util";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { saveToHistory } from "./storage";
 
 const execFileAsync = promisify(execFile);
