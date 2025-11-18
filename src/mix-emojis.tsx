@@ -1,11 +1,13 @@
 import { List, Detail, ActionPanel, Action, Icon, showToast, Toast } from "@raycast/api";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
 
 export default function MixEmojis() {
   const [firstEmoji, setFirstEmoji] = useState<string | null>(null);
   const [secondEmoji, setSecondEmoji] = useState<string | null>(null);
+  const [step1Search, setStep1Search] = useState("");
+  const [step2Search, setStep2Search] = useState("");
 
   // Step 3: Show result
   if (firstEmoji && secondEmoji) {
@@ -22,6 +24,8 @@ export default function MixEmojis() {
                 onAction={() => {
                   setFirstEmoji(null);
                   setSecondEmoji(null);
+                  setStep1Search("");
+                  setStep2Search("");
                 }}
               />
             </ActionPanel>
@@ -57,7 +61,10 @@ export default function MixEmojis() {
             <Action
               title="Try Another"
               icon={Icon.Repeat}
-              onAction={() => setSecondEmoji(null)}
+              onAction={() => {
+                setSecondEmoji(null);
+                setStep2Search("");
+              }}
               shortcut={{ modifiers: ["cmd"], key: "t" }}
             />
             <Action
@@ -66,6 +73,8 @@ export default function MixEmojis() {
               onAction={() => {
                 setFirstEmoji(null);
                 setSecondEmoji(null);
+                setStep1Search("");
+                setStep2Search("");
               }}
               shortcut={{ modifiers: ["cmd"], key: "n" }}
             />
@@ -80,7 +89,15 @@ export default function MixEmojis() {
     const validCombinations = EmojiKitchen.getValidCombinations(firstEmoji);
 
     return (
-      <List searchBarPlaceholder={`Mix ${firstEmoji} with...`} navigationTitle={`Mix with ${firstEmoji}`}>
+      <List
+        key={`second-${firstEmoji}`}
+        searchBarPlaceholder={`Mix ${firstEmoji} with...`}
+        navigationTitle={`Mix with ${firstEmoji}`}
+        searchText={step2Search}
+        onSearchTextChange={setStep2Search}
+        filtering={true}
+        throttle={true}
+      >
         {validCombinations.length > 0 ? (
           <List.Section title={`Available Combinations (${validCombinations.length})`}>
             {validCombinations.map((item) => (
@@ -90,13 +107,21 @@ export default function MixEmojis() {
                 title={item.name}
                 actions={
                   <ActionPanel>
-                    <Action title="Select" icon={Icon.CheckCircle} onAction={() => setSecondEmoji(item.emoji)} />
-                  <Action
-                    title="Change First Emoji"
-                    icon={Icon.ArrowLeft}
-                    onAction={() => setFirstEmoji(null)}
-                    shortcut={{ modifiers: ["cmd"], key: "backspace" }}
-                  />
+                    <Action
+                      title="Select"
+                      icon={Icon.CheckCircle}
+                       onAction={() => {
+                         setSecondEmoji(item.emoji);
+                       }}
+                    />
+                    <Action
+                      title="Change First Emoji"
+                      icon={Icon.ArrowLeft}
+                      onAction={() => {
+                        setFirstEmoji(null);
+                      }}
+                      shortcut={{ modifiers: ["cmd"], key: "backspace" }}
+                    />
                   </ActionPanel>
                 }
               />
@@ -109,7 +134,12 @@ export default function MixEmojis() {
             icon={Icon.EmojiSad}
             actions={
               <ActionPanel>
-                <Action title="Pick Different Emoji" onAction={() => setFirstEmoji(null)} />
+                <Action
+                  title="Pick Different Emoji"
+                   onAction={() => {
+                     setFirstEmoji(null);
+                   }}
+                />
               </ActionPanel>
             }
           />
@@ -119,10 +149,16 @@ export default function MixEmojis() {
   }
 
   // Step 1: Select first emoji
-  const allEmojis = EmojiKitchen.getAllBaseEmojis();
+  const allEmojis = useMemo(() => EmojiKitchen.getAllBaseEmojis(), []);
 
   return (
-    <List searchBarPlaceholder="Search first emoji...">
+    <List
+      searchBarPlaceholder="Search first emoji..."
+      searchText={step1Search}
+      onSearchTextChange={setStep1Search}
+      filtering={true}
+      throttle={true}
+    >
       {allEmojis.map((item) => (
         <List.Item
           key={item.emoji}
@@ -130,7 +166,14 @@ export default function MixEmojis() {
           title={item.name}
           actions={
             <ActionPanel>
-              <Action title="Select" icon={Icon.ArrowRight} onAction={() => setFirstEmoji(item.emoji)} />
+              <Action
+                title="Select"
+                icon={Icon.ArrowRight}
+                 onAction={() => {
+                   setFirstEmoji(item.emoji);
+                   // Step 2 search is already empty by default
+                 }}
+              />
             </ActionPanel>
           }
         />

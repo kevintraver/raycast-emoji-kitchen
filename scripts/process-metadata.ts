@@ -1,3 +1,19 @@
+/**
+ * Process raw emoji metadata into compact format for Raycast extension
+ * 
+ * This script converts the 92MB raw metadata from Google's Emoji Kitchen
+ * into an 8.6MB compact format suitable for bundling with the extension.
+ * 
+ * Input: src/data/raw-metadata.json (92MB)
+ * Output: src/data/emoji-kitchen.json (8.6MB)
+ * 
+ * Format: { "😀": { n: "Grinning", c: { "❤️": "20201001:1f600:2764" } } }
+ * - n: emoji name (for search)
+ * - c: combinations map (emoji -> "date:leftCodepoint:rightCodepoint")
+ * 
+ * Run: npx tsx scripts/process-metadata.ts
+ */
+
 import fs from "fs";
 import path from "path";
 
