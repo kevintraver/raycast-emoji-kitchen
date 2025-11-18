@@ -93,9 +93,16 @@ async function downloadFile(url: string, dest: string): Promise<void> {
 
       const totalBytes = parseInt(response.headers["content-length"] || "0", 10);
       let receivedBytes = 0;
+      let lastLogBytes = 0;
+
+      console.log(`Starting download. Total size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
 
       response.on("data", (chunk) => {
         receivedBytes += chunk.length;
+        if (receivedBytes - lastLogBytes > 5 * 1024 * 1024) {
+            console.log(`Downloaded: ${(receivedBytes / 1024 / 1024).toFixed(2)} MB`);
+            lastLogBytes = receivedBytes;
+        }
       });
 
       response.pipe(file);
