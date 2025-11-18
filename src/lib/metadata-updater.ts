@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import https from "node:https";
 import { environment } from "@raycast/api";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -72,19 +73,53 @@ try {
 `;
 
 async function downloadFile(url: string, dest: string): Promise<void> {
-  console.log(`Downloading via curl: ${url}`);
-  await execFileAsync("curl", ["-L", "-o", dest, url]);
-  
-  if (fs.existsSync(dest)) {
-      const stats = fs.statSync(dest);
-      if (stats.size < 1000000) { // < 1MB is suspicious for this file
-          console.warn(`Downloaded file is suspiciously small (${stats.size} bytes). Deleting.`);
-          fs.unlinkSync(dest);
-          throw new Error("Download failed: File too small (likely error page or partial)");
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+
+    function handleResponse(response: import("http").IncomingMessage) {
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        if (response.headers.location) {
+          https.get(response.headers.location, handleResponse).on("error", onError);
+          return;
+        }
       }
-  } else {
-      throw new Error("Download failed: File not created");
-  }
+
+      if (response.statusCode !== 200) {
+        file.close();
+        fs.unlink(dest, () => {});
+        reject(new Error(`Failed to download: ${response.statusCode}`));
+        return;
+      }
+
+      const totalBytes = parseInt(response.headers["content-length"] || "0", 10);
+      let receivedBytes = 0;
+
+      response.on("data", (chunk) => {
+        receivedBytes += chunk.length;
+      });
+
+      response.pipe(file);
+
+      file.on("finish", () => {
+        file.close();
+        // Validating size if content-length is provided
+        if (totalBytes > 0 && receivedBytes !== totalBytes) {
+          fs.unlink(dest, () => {});
+          reject(new Error(`Download incomplete: ${receivedBytes}/${totalBytes} bytes`));
+        } else {
+          resolve();
+        }
+      });
+    }
+
+    function onError(err: Error) {
+      file.close();
+      fs.unlink(dest, () => {});
+      reject(err);
+    }
+
+    https.get(url, handleResponse).on("error", onError);
+  });
 }
 
 async function processMetadata(rawPath: string, compactPath: string): Promise<void> {
