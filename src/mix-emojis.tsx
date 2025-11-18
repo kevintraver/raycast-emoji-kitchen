@@ -16,7 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
-import { ensureMetadataExists } from "./lib/metadata";
+import { ensureMetadataExists, getCompactMetadataPath } from "./lib/metadata";
 import { copyResizedImage } from "./lib/image-utils";
 
 // Global callback to reset the root search state
@@ -156,24 +156,28 @@ export default function Command() {
   const [searchText, setSearchText] = useState("");
   const [allEmojis, setAllEmojis] = useState<Array<{ emoji: string; name: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
-        try {
-            // Load initial (might be empty)
-            setAllEmojis(EmojiKitchen.getAllBaseEmojis());
+      try {
+        // Ensure metadata exists (download + process if needed)
+        await ensureMetadataExists((status) => {
+          setDownloadStatus(status);
+        });
 
-            // Ensure metadata exists (download + process if needed)
-            await ensureMetadataExists();
+        // Clear download status and load emojis
+        setDownloadStatus(null);
 
-            // Reload and update state
-            EmojiKitchen.reload();
-            setAllEmojis(EmojiKitchen.getAllBaseEmojis());
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsLoading(false);
-        }
+        // Reload and update state
+        EmojiKitchen.reload();
+        setAllEmojis(EmojiKitchen.getAllBaseEmojis());
+      } catch (error) {
+        console.error(error);
+        setDownloadStatus(`Error: ${error}`);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     init();
@@ -183,6 +187,16 @@ export default function Command() {
       resetRootSearch = null;
     };
   }, []);
+
+  // Show download progress if metadata is being downloaded
+  if (downloadStatus) {
+    return (
+      <Detail
+        markdown={`# First Time Setup\n\n${downloadStatus}\n\nThis only happens on first launch. Please wait...`}
+        isLoading={isLoading}
+      />
+    );
+  }
 
   const filtered = allEmojis.filter(
     (i) => i.name.toLowerCase().includes(searchText.toLowerCase()) || i.emoji.includes(searchText),

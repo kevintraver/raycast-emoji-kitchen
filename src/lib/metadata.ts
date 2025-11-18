@@ -39,13 +39,74 @@ type EmojiIndex = Record<string, EmojiIndexData>;
 // In-memory lock to prevent concurrent downloads
 let downloadPromise: Promise<void> | null = null;
 
-// Path to worker script for processing metadata
-const WORKER_SCRIPT_PATH = path.join(__dirname, "../../scripts/worker-process-metadata.js");
+// Progress callback type
+export type ProgressCallback = (status: string) => void;
+
+/**
+ * Generate worker script content dynamically
+ * This avoids file path issues in compiled Raycast extensions
+ */
+function getWorkerScript(): string {
+  return `
+const fs = require('fs');
+
+const [,, rawPath, compactPath] = process.argv;
+
+function codepointToEmoji(codepoint) {
+  return String.fromCodePoint(...codepoint.split("-").map((p) => parseInt(p, 16)));
+}
+
+function formatName(alt) {
+  return alt
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+try {
+  console.log("Reading raw metadata...");
+  const rawMetadata = JSON.parse(fs.readFileSync(rawPath, "utf-8"));
+
+  const index = {};
+  let totalCombos = 0;
+
+  console.log("Processing...");
+  for (const codepoint of rawMetadata.knownSupportedEmoji) {
+    const emoji = codepointToEmoji(codepoint);
+    const data = rawMetadata.data[codepoint];
+
+    if (!data) continue;
+
+    const combos = {};
+
+    if (data.combinations) {
+      for (const [rightCp, variants] of Object.entries(data.combinations)) {
+        const rightEmoji = codepointToEmoji(rightCp);
+        const latest = variants.find((v) => v.isLatest) || variants[0];
+        combos[rightEmoji] = \`\${latest.date}:\${latest.leftEmojiCodepoint}:\${latest.rightEmojiCodepoint}\`;
+        totalCombos++;
+      }
+    }
+
+    index[emoji] = {
+      n: formatName(data.alt),
+      c: combos,
+    };
+  }
+
+  fs.writeFileSync(compactPath, JSON.stringify(index));
+  console.log(\`Processed \${totalCombos} combinations.\`);
+} catch (err) {
+  console.error(err);
+  process.exit(1);
+}
+  `.trim();
+}
 
 /**
  * Download a file from URL with progress logging
  */
-async function downloadFile(url: string, dest: string): Promise<void> {
+async function downloadFile(url: string, dest: string, onProgress?: ProgressCallback): Promise<void> {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
 
@@ -66,28 +127,37 @@ async function downloadFile(url: string, dest: string): Promise<void> {
 
       const totalBytes = parseInt(response.headers["content-length"] || "0", 10);
       let receivedBytes = 0;
-      let lastLogBytes = 0;
+      let lastProgressBytes = 0;
 
-      console.log(`Starting download. Total size: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+      const totalMB = (totalBytes / 1024 / 1024).toFixed(2);
+      console.log(`Starting download. Total size: ${totalMB} MB`);
+      onProgress?.(`Downloading metadata (0 MB / ${totalMB} MB)...`);
 
       response.on("data", (chunk) => {
         receivedBytes += chunk.length;
-        if (receivedBytes - lastLogBytes > 5 * 1024 * 1024) {
-          console.log(`Downloaded: ${(receivedBytes / 1024 / 1024).toFixed(2)} MB`);
-          lastLogBytes = receivedBytes;
+        // Update progress every 10MB
+        if (receivedBytes - lastProgressBytes > 10 * 1024 * 1024) {
+          const downloadedMB = (receivedBytes / 1024 / 1024).toFixed(2);
+          console.log(`Downloaded: ${downloadedMB} MB`);
+          onProgress?.(`Downloading metadata (${downloadedMB} MB / ${totalMB} MB)...`);
+          lastProgressBytes = receivedBytes;
         }
       });
 
       response.pipe(file);
 
       file.on("finish", () => {
-        file.close();
-        if (totalBytes > 0 && receivedBytes !== totalBytes) {
-          fs.unlink(dest, () => {});
-          reject(new Error(`Download incomplete: ${receivedBytes}/${totalBytes} bytes`));
-        } else {
-          resolve();
-        }
+        file.close(() => {
+          // Validate download after file is fully closed and flushed
+          if (totalBytes > 0 && receivedBytes !== totalBytes) {
+            fs.unlink(dest, () => {});
+            reject(new Error(`Download incomplete: ${receivedBytes}/${totalBytes} bytes`));
+          } else {
+            console.log(`Download validated: ${receivedBytes} bytes`);
+            onProgress?.(`Download complete (${totalMB} MB). Processing...`);
+            resolve();
+          }
+        });
       });
     }
 
@@ -106,7 +176,16 @@ async function downloadFile(url: string, dest: string): Promise<void> {
  */
 async function processMetadata(rawPath: string, compactPath: string): Promise<void> {
   console.log("Processing raw metadata via child process...");
-  await execFileAsync(process.execPath, [WORKER_SCRIPT_PATH, rawPath, compactPath]);
+  const scriptPath = path.join(path.dirname(rawPath), "processor.js");
+
+  try {
+    fs.writeFileSync(scriptPath, getWorkerScript());
+    await execFileAsync(process.execPath, [scriptPath, rawPath, compactPath]);
+  } finally {
+    if (fs.existsSync(scriptPath)) {
+      fs.unlinkSync(scriptPath);
+    }
+  }
 }
 
 /**
@@ -114,10 +193,11 @@ async function processMetadata(rawPath: string, compactPath: string): Promise<vo
  * This is the main function to call on app startup
  * Uses in-memory lock to prevent concurrent downloads
  */
-export async function ensureMetadataExists(): Promise<void> {
+export async function ensureMetadataExists(onProgress?: ProgressCallback): Promise<void> {
   // If download is already in progress, wait for it
   if (downloadPromise) {
     console.log("[metadata] Download already in progress, waiting...");
+    onProgress?.("Waiting for existing download to complete...");
     await downloadPromise;
     return;
   }
@@ -133,35 +213,38 @@ export async function ensureMetadataExists(): Promise<void> {
     try {
       console.log("Checking metadata at:", RAW_METADATA_PATH);
 
+      // Download raw metadata if it doesn't exist
       if (!fs.existsSync(RAW_METADATA_PATH)) {
         console.log("Downloading raw metadata from:", RAW_METADATA_URL);
-        await downloadFile(RAW_METADATA_URL, RAW_METADATA_PATH);
-        console.log("Download complete. Processing...");
+        onProgress?.("Starting metadata download...");
+        await downloadFile(RAW_METADATA_URL, RAW_METADATA_PATH, onProgress);
+        console.log("Download complete.");
+      } else {
+        console.log("Raw metadata already exists, skipping download.");
+      }
+
+      // Process raw metadata if compact version doesn't exist
+      if (!fs.existsSync(COMPACT_METADATA_PATH)) {
+        console.log("Compact metadata missing. Processing raw metadata...");
+        onProgress?.("Processing metadata (this may take 10-15 seconds)...");
 
         try {
           await processMetadata(RAW_METADATA_PATH, COMPACT_METADATA_PATH);
           console.log("Metadata processing complete.");
+          onProgress?.("Metadata ready!");
         } catch (e) {
-          console.error("Processing failed, deleting potentially corrupted raw file.");
-          if (fs.existsSync(RAW_METADATA_PATH)) {
-            fs.unlinkSync(RAW_METADATA_PATH);
-          }
-          throw e;
-        }
-      } else {
-        console.log("Raw metadata already exists.");
-        // Ensure compact metadata also exists
-        if (!fs.existsSync(COMPACT_METADATA_PATH)) {
-          console.log("Compact metadata missing. Reprocessing...");
-          try {
-            await processMetadata(RAW_METADATA_PATH, COMPACT_METADATA_PATH);
-          } catch (e) {
-            console.error("Processing failed (existing raw file), deleting corrupted raw file.");
+          console.error("Processing failed:", e);
+
+          // Only delete raw file if it's corrupted (JSON parse error indicates corrupt download)
+          if (e instanceof Error && (e.message.includes("JSON") || e.message.includes("SyntaxError"))) {
+            console.error("Raw metadata appears corrupted. Deleting for fresh download next time.");
             if (fs.existsSync(RAW_METADATA_PATH)) {
               fs.unlinkSync(RAW_METADATA_PATH);
             }
-            throw e;
+          } else {
+            console.error("Processing failed for unknown reason. Keeping raw file for retry.");
           }
+          throw e;
         }
       }
     } catch (error) {

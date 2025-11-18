@@ -1,4 +1,4 @@
-import { List, ActionPanel, Action, showToast, Toast, Icon, clearSearchBar } from "@raycast/api";
+import { List, ActionPanel, Action, showToast, Toast, Icon, clearSearchBar, Detail } from "@raycast/api";
 import { useState, useMemo, useEffect } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
@@ -94,17 +94,25 @@ function searchMashups(query: string): SearchResult[] {
 export default function DescribeMashup() {
   const [description, setDescription] = useState("");
   const [isReady, setIsReady] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
-        try {
-            await ensureMetadataExists();
-            EmojiKitchen.reload();
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsReady(true);
-        }
+      try {
+        await ensureMetadataExists((status) => {
+          setDownloadStatus(status);
+        });
+
+        // Clear download status
+        setDownloadStatus(null);
+
+        EmojiKitchen.reload();
+      } catch (e) {
+        console.error(e);
+        setDownloadStatus(`Error: ${e}`);
+      } finally {
+        setIsReady(true);
+      }
     };
     init();
 
@@ -130,6 +138,16 @@ export default function DescribeMashup() {
     setDescription("");
     await clearSearchBar();
   };
+
+  // Show download progress if metadata is being downloaded
+  if (downloadStatus) {
+    return (
+      <Detail
+        markdown={`# First Time Setup\n\n${downloadStatus}\n\nThis only happens on first launch. Please wait...`}
+        isLoading={!isReady}
+      />
+    );
+  }
 
   return (
     <List
