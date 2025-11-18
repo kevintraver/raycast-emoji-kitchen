@@ -1,187 +1,154 @@
-import { List, ActionPanel, Action, Icon, showToast, Toast, clearSearchBar, Image } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  List,
+  Detail,
+  Icon,
+  showToast,
+  Toast,
+  clearSearchBar,
+  useNavigation,
+  Clipboard,
+} from "@raycast/api";
 import { useState, useMemo } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
 
-export default function MixEmojis() {
-  const [input1, setInput1] = useState("");
-  const [input2, setInput2] = useState("");
+function ResultScreen(props: { first: string; second: string }) {
+  const { first, second } = props;
+  const { pop } = useNavigation();
+  const mashupData = EmojiKitchen.getMashupData(first, second);
 
-  const [firstEmoji, setFirstEmoji] = useState<string | null>(null);
-  const [secondEmoji, setSecondEmoji] = useState<string | null>(null);
+  const markdown = mashupData ? `![Emoji Mashup](${mashupData.url})` : "# No mashup available 😢";
 
-  const allEmojis = useMemo(() => EmojiKitchen.getAllBaseEmojis(), []);
+  return (
+    <Detail
+      navigationTitle={`${first} + ${second}`}
+      markdown={markdown}
+      actions={
+        <ActionPanel>
+          {mashupData && (
+            <Action
+              title="Copy Mashup Image"
+              icon={Icon.Clipboard}
+              onAction={async () => {
+                try {
+                  // Fetch the image and copy it to clipboard
+                  const response = await fetch(mashupData.url);
+                  const blob = await response.blob();
+                  const buffer = await blob.arrayBuffer();
 
-  // ── STEP 3: Result (inside List for Escape support!) ───────────────────────────────────
-  if (firstEmoji && secondEmoji) {
-    const mashupData = EmojiKitchen.getMashupData(firstEmoji, secondEmoji);
-
-    return (
-      <List navigationTitle={`${firstEmoji} + ${secondEmoji} = Mashup!`} isShowingDetail>
-        <List.Item
-          title={`${firstEmoji} + ${secondEmoji}`}
-          icon={{ source: mashupData?.url || "", mask: Image.Mask.RoundedRectangle }}
-          detail={
-            <List.Item.Detail
-              markdown={mashupData ? `![](${mashupData.url})` : "No mashup available"}
-              metadata={
-                mashupData ? (
-                  <List.Item.Detail.Metadata>
-                    <List.Item.Detail.Metadata.Label title="First" text={firstEmoji} />
-                    <List.Item.Detail.Metadata.Label title="Second" text={secondEmoji} />
-                    <List.Item.Detail.Metadata.Separator />
-                    <List.Item.Detail.Metadata.Link title="Mashup URL" text={mashupData.url} target={mashupData.url} />
-                  </List.Item.Detail.Metadata>
-                ) : undefined
-              }
-            />
-          }
-          actions={
-            <ActionPanel>
-              {mashupData ? (
-                <>
-                  <Action.CopyToClipboard
-                    title="Copy Mashup URL"
-                    content={mashupData.url}
-                    onCopy={async () => {
-                      await saveToHistory(firstEmoji, secondEmoji, mashupData.url);
-                      await showToast({
-                        style: Toast.Style.Success,
-                        title: "Copied to Clipboard!",
-                      });
-                    }}
-                  />
-                  <Action.OpenInBrowser title="Open in Browser" url={mashupData.url} />
-                </>
-              ) : null}
-
-              <Action
-                title="Back to Second Emoji"
-                icon={Icon.ArrowLeft}
-                shortcut={{ modifiers: ["cmd"], key: "[" }}
-                onAction={() => setSecondEmoji(null)}
-              />
-
-              <Action
-                title="Try Another Second Emoji"
-                icon={Icon.Repeat}
-                shortcut={{ modifiers: ["cmd"], key: "t" }}
-                onAction={async () => {
-                  setSecondEmoji(null);
-                  setInput2("");
-                  await clearSearchBar();
-                }}
-              />
-
-              <Action
-                title="Start over"
-                icon={Icon.RotateAntiClockwise}
-                shortcut={{ modifiers: ["cmd"], key: "n" }}
-                onAction={() => {
-                  setFirstEmoji(null);
-                  setSecondEmoji(null);
-                  setInput1("");
-                  setInput2("");
-                }}
-              />
-            </ActionPanel>
-          }
-        />
-      </List>
-    );
-  }
-
-  // ── STEP 2: Pick Second Emoji ─────────────────────────────────────
-  if (firstEmoji) {
-    const validCombinations = EmojiKitchen.getValidCombinations(firstEmoji);
-
-    // Filter by current input2
-    const filtered = validCombinations.filter(
-      (item) => item.name.toLowerCase().includes(input2.toLowerCase()) || item.emoji.includes(input2),
-    );
-
-    return (
-      <List
-        searchBarPlaceholder={`Mix ${firstEmoji} with...`}
-        navigationTitle={`Mix ${firstEmoji} + ?`}
-        searchText={input2}
-        onSearchTextChange={setInput2}
-        throttle
-      >
-        {filtered.length > 0 ? (
-          <List.Section title={`Available Combinations (${filtered.length})`}>
-            {filtered.map((item) => (
-              <List.Item
-                key={item.emoji}
-                icon={item.emoji}
-                title={item.name}
-                subtitle={item.emoji}
-                actions={
-                  <ActionPanel>
-                    <Action
-                      title="Select This Emoji"
-                      icon={Icon.Checkmark}
-                      onAction={async () => {
-                        setSecondEmoji(item.emoji);
-                        await clearSearchBar();
-                      }}
-                    />
-                    <Action
-                      title="Change First Emoji"
-                      icon={Icon.ArrowLeft}
-                      shortcut={{ modifiers: ["cmd"], key: "[" }}
-                      onAction={() => setFirstEmoji(null)}
-                    />
-                  </ActionPanel>
+                  await Clipboard.copy({ file: Buffer.from(buffer) });
+                  await saveToHistory(first, second, mashupData.url);
+                  await showToast({ style: Toast.Style.Success, title: "Copied Image!" });
+                } catch {
+                  await showToast({ style: Toast.Style.Failure, title: "Failed to Copy Image" });
                 }
-              />
-            ))}
-          </List.Section>
-        ) : (
-          <List.EmptyView
-            icon={Icon.QuestionMark}
-            title={input2 ? "No combinations found" : "Start typing"}
-            description={
-              input2 ? `Nothing matches "${input2}"` : `This emoji has ${validCombinations.length} combinations`
-            }
+              }}
+            />
+          )}
+          {mashupData && <Action.OpenInBrowser title="Open in Browser" url={mashupData.url} />}
+          <Action
+            title="Back"
+            icon={Icon.ArrowLeft}
+            shortcut={{ modifiers: ["cmd"], key: "[" }}
+            onAction={() => pop()}
           />
-        )}
-      </List>
-    );
-  }
+          <Action
+            title="Start over"
+            icon={Icon.RotateAntiClockwise}
+            shortcut={{ modifiers: ["cmd"], key: "n" }}
+            onAction={() => {
+              pop();
+              pop();
+            }}
+          />
+        </ActionPanel>
+      }
+    />
+  );
+}
 
-  // ── STEP 1: Pick First Emoji ─────────────────────────────────────
-  const filteredFirst = allEmojis.filter(
-    (item) => item.name.toLowerCase().includes(input1.toLowerCase()) || item.emoji.includes(input1),
+function SecondEmojiScreen(props: { firstEmoji: string }) {
+  const { firstEmoji } = props;
+  const [searchText, setSearchText] = useState("");
+  const validCombinations = EmojiKitchen.getValidCombinations(firstEmoji);
+  const filtered = validCombinations.filter(
+    (i) => i.name.toLowerCase().includes(searchText.toLowerCase()) || i.emoji.includes(searchText),
   );
 
   return (
-    <List searchBarPlaceholder="Search first emoji..." searchText={input1} onSearchTextChange={setInput1} throttle>
-      {filteredFirst.map((item) => (
+    <List
+      searchBarPlaceholder={`Mix ${firstEmoji} with...`}
+      navigationTitle={`Mix ${firstEmoji} + ?`}
+      searchText={searchText}
+      onSearchTextChange={setSearchText}
+      throttle
+    >
+      {filtered.map((item) => (
         <List.Item
           key={item.emoji}
           icon={item.emoji}
           title={item.name}
-          subtitle={item.emoji}
           actions={
             <ActionPanel>
-              <Action
-                title="Mix This Emoji"
-                icon={Icon.ArrowRight}
-                onAction={async () => {
-                  setFirstEmoji(item.emoji);
-                  setInput2("");
-                  await clearSearchBar();
-                }}
+              <Action.Push
+                title="Select This Emoji"
+                icon={Icon.Checkmark}
+                target={<ResultScreen first={firstEmoji} second={item.emoji} />}
               />
             </ActionPanel>
           }
         />
       ))}
 
-      {filteredFirst.length === 0 && (
-        <List.EmptyView icon={Icon.MagnifyingGlass} title="No emoji found" description='Try "heart", "fire", "cat"' />
+      {filtered.length === 0 && (
+        <List.EmptyView
+          title={searchText ? "No matches" : "Start typing"}
+          description={
+            searchText ? `Nothing for "${searchText}"` : `${validCombinations.length} combinations available`
+          }
+          icon={Icon.QuestionMark}
+        />
       )}
+    </List>
+  );
+}
+
+export default function Command() {
+  const [searchText, setSearchText] = useState("");
+  const allEmojis = useMemo(() => EmojiKitchen.getAllBaseEmojis(), []);
+
+  const filtered = allEmojis.filter(
+    (i) => i.name.toLowerCase().includes(searchText.toLowerCase()) || i.emoji.includes(searchText),
+  );
+
+  return (
+    <List
+      searchBarPlaceholder="Search first emoji..."
+      searchText={searchText}
+      onSearchTextChange={setSearchText}
+      throttle
+    >
+      {filtered.map((item) => (
+        <List.Item
+          key={item.emoji}
+          icon={item.emoji}
+          title={item.name}
+          actions={
+            <ActionPanel>
+              <Action.Push
+                title="Mix This Emoji"
+                icon={Icon.ArrowRight}
+                target={<SecondEmojiScreen firstEmoji={item.emoji} />}
+                onPush={async () => await clearSearchBar()}
+              />
+            </ActionPanel>
+          }
+        />
+      ))}
+
+      {filtered.length === 0 && <List.EmptyView icon={Icon.MagnifyingGlass} title="No emoji found" />}
     </List>
   );
 }
