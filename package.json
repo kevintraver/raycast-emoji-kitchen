@@ -31,13 +31,6 @@
       "subtitle": "Emoji Kitchen",
       "description": "View your emoji mashup history",
       "mode": "view"
-    },
-    {
-      "name": "debug-metadata",
-      "title": "Debug Metadata",
-      "subtitle": "Emoji Kitchen",
-      "description": "Debug metadata download and processing",
-      "mode": "view"
     }
   ],
   "dependencies": {
