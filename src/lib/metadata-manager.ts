@@ -30,9 +30,12 @@ export function emojiToCodepoint(emoji: string): string {
 export function buildMashupUrl(dataString: string): string {
   const [date, leftCp, rightCp] = dataString.split(":");
 
-  const url = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${leftCp}/u${leftCp}_u${rightCp}.png`;
+  const getUrlPart = (cp: string) => `u${cp.split("-").join("-u")}`;
 
-  console.log("[metadata-manager] Built URL from", dataString, "=>", url);
+  const uLeft = getUrlPart(leftCp);
+  const uRight = getUrlPart(rightCp);
+
+  const url = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/${uLeft}/${uLeft}_${uRight}.png`;
 
   return url;
 }
