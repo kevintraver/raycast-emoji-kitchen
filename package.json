@@ -31,13 +31,6 @@
       "subtitle": "Emoji Kitchen",
       "description": "View your emoji mashup history",
       "mode": "view"
-    },
-    {
-      "name": "refresh-metadata",
-      "title": "Refresh Emoji Metadata",
-      "subtitle": "Emoji Kitchen",
-      "description": "Download latest emoji combinations from GitHub",
-      "mode": "no-view"
     }
   ],
   "dependencies": {
@@ -57,6 +50,7 @@
     "dev": "ray develop",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
+    "generate:metadata": "node scripts/generate-compact-metadata.js",
     "prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1",
     "publish": "npx @raycast/api@latest publish"
   }

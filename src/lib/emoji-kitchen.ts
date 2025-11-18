@@ -24,7 +24,7 @@ class EmojiKitchen {
     const data = this.index![emoji];
     if (!data) return [];
 
-    return data.c.map((comboEmoji) => ({
+    return Object.keys(data.c).map((comboEmoji) => ({
       emoji: comboEmoji,
       name: this.index![comboEmoji]?.n || comboEmoji,
     }));
@@ -34,16 +34,24 @@ class EmojiKitchen {
     this.ensureLoaded();
     const data1 = this.index![emoji1];
     const data2 = this.index![emoji2];
-    return !!(data1?.c.includes(emoji2) || data2?.c.includes(emoji1));
+    return !!(data1?.c[emoji2] || data2?.c[emoji1]);
   }
 
   static getMashupData(emoji1: string, emoji2: string): { url: string } | null {
-    if (!this.isValidCombo(emoji1, emoji2)) {
-      console.log("[emoji-kitchen] Invalid combo:", emoji1, "+", emoji2);
+    this.ensureLoaded();
+    
+    const data1 = this.index![emoji1];
+    const data2 = this.index![emoji2];
+    
+    const dataString = data1?.c[emoji2] || data2?.c[emoji1];
+    
+    if (!dataString) {
+      console.log("[emoji-kitchen] No mashup data for:", emoji1, "+", emoji2);
       return null;
     }
     
-    return { url: buildMashupUrl(emoji1, emoji2) };
+    console.log("[emoji-kitchen] Found data:", dataString);
+    return { url: buildMashupUrl(dataString) };
   }
 
   static getAllValidPairs(): string[] {
@@ -51,7 +59,7 @@ class EmojiKitchen {
     const pairs: string[] = [];
 
     for (const [left, data] of Object.entries(this.index!)) {
-      for (const right of data.c) {
+      for (const right of Object.keys(data.c)) {
         pairs.push(`${left}+${right}`);
       }
     }

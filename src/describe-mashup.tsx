@@ -6,42 +6,31 @@ import { saveToHistory } from "./lib/storage";
 export default function DescribeMashup() {
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<{ emoji1: string; emoji2: string; url: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
-  async function findMashup() {
+  function findMashup() {
     if (!description.trim()) return;
 
-    setIsLoading(true);
     try {
-      // Simple keyword matching for now - can enhance with AI later
-      const validPairs = await EmojiKitchen.getAllValidPairs();
-
-      // For MVP: just show first valid combo
-      // TODO: Add AI.ask() for smarter matching
+      // Simple keyword matching - show first valid combo for MVP
+      const validPairs = EmojiKitchen.getAllValidPairs();
       const [pair] = validPairs;
       const [emoji1, emoji2] = pair.split("+");
 
-      const mashup = await EmojiKitchen.getMashupData(emoji1, emoji2);
+      const mashup = EmojiKitchen.getMashupData(emoji1, emoji2);
       if (mashup) {
         setResult({ emoji1, emoji2, url: mashup.url });
       }
     } catch (error) {
-      await showToast({
+      showToast({
         style: Toast.Style.Failure,
         title: "Error",
         message: String(error),
       });
-    } finally {
-      setIsLoading(false);
     }
   }
 
   return (
-    <List
-      isLoading={isLoading}
-      searchBarPlaceholder="Describe emoji mashup (e.g., 'zombie in love')..."
-      onSearchTextChange={setDescription}
-    >
+    <List searchBarPlaceholder="Describe emoji mashup (e.g., 'zombie in love')..." onSearchTextChange={setDescription}>
       {result ? (
         <List.Item
           title={`${result.emoji1} + ${result.emoji2}`}
@@ -73,4 +62,3 @@ export default function DescribeMashup() {
     </List>
   );
 }
-

@@ -91,12 +91,12 @@ export default function MixEmojis() {
                 actions={
                   <ActionPanel>
                     <Action title="Select" icon={Icon.CheckCircle} onAction={() => setSecondEmoji(item.emoji)} />
-                    <Action
-                      title="Change First Emoji"
-                      icon={Icon.ArrowLeft}
-                      onAction={() => setFirstEmoji(null)}
-                      shortcut={{ modifiers: ["cmd"], key: "backspace" }}
-                    />
+                  <Action
+                    title="Change First Emoji"
+                    icon={Icon.ArrowLeft}
+                    onAction={() => setFirstEmoji(null)}
+                    shortcut={{ modifiers: ["cmd"], key: "backspace" }}
+                  />
                   </ActionPanel>
                 }
               />

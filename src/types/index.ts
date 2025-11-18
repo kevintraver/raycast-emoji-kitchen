@@ -31,4 +31,3 @@ export interface MashupHistoryItem {
   mashupUrl: string;
   timestamp: number;
 }
-

@@ -1,9 +1,9 @@
 import emojiData from "../data/emoji-kitchen.json";
 
-// Minimal index: { "😀": { n: "Grinning", c: ["❤️", "🔥"] }, ... }
+// Compact index: { "😀": { n: "Grinning", c: { "❤️": "20201001:1f600:2764" } }, ... }
 export interface EmojiIndexData {
   n: string; // name
-  c: string[]; // combos
+  c: Record<string, string>; // combos with date:leftCp:rightCp
 }
 
 type EmojiIndex = Record<string, EmojiIndexData>;
@@ -26,17 +26,13 @@ export function emojiToCodepoint(emoji: string): string {
   return codePoints.join("-");
 }
 
-// Build mashup URL - try multiple date patterns
-export function buildMashupUrl(emoji1: string, emoji2: string): string {
-  const cp1 = emojiToCodepoint(emoji1);
-  const cp2 = emojiToCodepoint(emoji2);
+// Build mashup URL from date:leftCp:rightCp string
+export function buildMashupUrl(dataString: string): string {
+  const [date, leftCp, rightCp] = dataString.split(":");
   
-  // Use most common date that works for majority of combinations
-  const date = "20201001";
+  const url = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${leftCp}/u${leftCp}_u${rightCp}.png`;
   
-  const url = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${cp1}/u${cp1}_u${cp2}.png`;
-  
-  console.log("[metadata-manager] Built URL for", emoji1, "+", emoji2, "=>", url);
+  console.log("[metadata-manager] Built URL from", dataString, "=>", url);
   
   return url;
 }

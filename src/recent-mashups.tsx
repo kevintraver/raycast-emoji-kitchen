@@ -38,11 +38,7 @@ export default function RecentMashups() {
   if (history.length === 0) {
     return (
       <List>
-        <List.EmptyView
-          title="No mashups yet"
-          description="Try mixing some emojis first!"
-          icon={Icon.EmojiSad}
-        />
+        <List.EmptyView title="No mashups yet" description="Try mixing some emojis first!" icon={Icon.EmojiSad} />
       </List>
     );
   }
@@ -65,12 +61,7 @@ export default function RecentMashups() {
                 icon={Icon.Trash}
                 shortcut={{ modifiers: ["cmd"], key: "delete" }}
               />
-              <Action
-                title="Clear All"
-                onAction={handleClearAll}
-                icon={Icon.Trash}
-                style={Action.Style.Destructive}
-              />
+              <Action title="Clear All" onAction={handleClearAll} icon={Icon.Trash} style={Action.Style.Destructive} />
             </ActionPanel>
           }
         />
@@ -86,4 +77,3 @@ function formatTimeAgo(timestamp: number): string {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
 }
-

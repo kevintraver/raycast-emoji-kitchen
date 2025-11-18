@@ -7,7 +7,13 @@ interface RawMetadata {
     [codepoint: string]: {
       alt: string;
       combinations: {
-        [otherCodepoint: string]: Array<any>;
+        [otherCodepoint: string]: Array<{
+          gStaticUrl: string;
+          isLatest: boolean;
+          date: string;
+          leftEmojiCodepoint: string;
+          rightEmojiCodepoint: string;
+        }>;
       };
     };
   };
@@ -18,7 +24,6 @@ function codepointToEmoji(codepoint: string): string {
 }
 
 function formatName(alt: string): string {
-  // Convert "grinning" to "Grinning Face"
   return alt
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -31,10 +36,11 @@ const outputPath = path.join(__dirname, "../src/data/emoji-kitchen.json");
 console.log("Reading raw metadata...");
 const rawMetadata: RawMetadata = JSON.parse(fs.readFileSync(rawPath, "utf-8"));
 
-// Format: { emoji: { name: "...", combos: { "emoji": "date:leftCp:rightCp" } } }
-const index: Record<string, { name: string; combos: Record<string, string> }> = {};
+// Compact: { "😀": { "n": "Grinning", "c": { "❤️": "20201001:1f600:2764" } } }
+const index: Record<string, { n: string; c: Record<string, string> }> = {};
 
-console.log("Creating index with names and dates...");
+console.log("Creating compact index with dates...");
+let totalCombos = 0;
 
 for (const codepoint of rawMetadata.knownSupportedEmoji) {
   const emoji = codepointToEmoji(codepoint);
@@ -47,20 +53,23 @@ for (const codepoint of rawMetadata.knownSupportedEmoji) {
   if (data.combinations) {
     for (const [rightCp, variants] of Object.entries(data.combinations)) {
       const rightEmoji = codepointToEmoji(rightCp);
-      const latest = variants.find((v: any) => v.isLatest) || variants[0];
-      combos[rightEmoji] = `${latest.date}:${codepoint}:${rightCp}`;
+      const latest = variants.find((v) => v.isLatest) || variants[0];
+      // Store: "date:leftCp:rightCp" - exactly as they appear in Google's URL
+      combos[rightEmoji] = `${latest.date}:${latest.leftEmojiCodepoint}:${latest.rightEmojiCodepoint}`;
+      totalCombos++;
     }
   }
 
   index[emoji] = {
-    name: formatName(data.alt),
-    combos,
+    n: formatName(data.alt),
+    c: combos,
   };
 }
 
 fs.writeFileSync(outputPath, JSON.stringify(index));
 
 const sizeMB = (fs.statSync(outputPath).size / 1024 / 1024).toFixed(2);
-console.log(`✅ Created index with names: ${sizeMB} MB`);
-console.log(`   - ${Object.keys(index).length} emojis with names`);
+console.log(`✅ Created compact index with dates: ${sizeMB} MB`);
+console.log(`   - ${Object.keys(index).length} emojis`);
+console.log(`   - ${totalCombos} combinations with correct dates`);
 
