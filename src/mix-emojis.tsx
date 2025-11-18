@@ -22,7 +22,7 @@ function ResultScreen(props: { first: string; second: string }) {
   const { pop } = useNavigation();
   const mashupData = EmojiKitchen.getMashupData(first, second);
 
-  const markdown = mashupData ? `![Emoji Mashup](${mashupData.url})` : "# No mashup available 😢";
+  const markdown = mashupData ? `![Emoji Mashup](${mashupData.url}?raycast-height=350)` : "# No mashup available 😢";
 
   return (
     <Detail
