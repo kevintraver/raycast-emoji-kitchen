@@ -29,10 +29,10 @@ export function emojiToCodepoint(emoji: string): string {
 // Build mashup URL from date:leftCp:rightCp string
 export function buildMashupUrl(dataString: string): string {
   const [date, leftCp, rightCp] = dataString.split(":");
-  
+
   const url = `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${leftCp}/u${leftCp}_u${rightCp}.png`;
-  
+
   console.log("[metadata-manager] Built URL from", dataString, "=>", url);
-  
+
   return url;
 }

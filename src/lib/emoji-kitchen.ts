@@ -39,17 +39,17 @@ class EmojiKitchen {
 
   static getMashupData(emoji1: string, emoji2: string): { url: string } | null {
     this.ensureLoaded();
-    
+
     const data1 = this.index![emoji1];
     const data2 = this.index![emoji2];
-    
+
     const dataString = data1?.c[emoji2] || data2?.c[emoji1];
-    
+
     if (!dataString) {
       console.log("[emoji-kitchen] No mashup data for:", emoji1, "+", emoji2);
       return null;
     }
-    
+
     console.log("[emoji-kitchen] Found data:", dataString);
     return { url: buildMashupUrl(dataString) };
   }
