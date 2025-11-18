@@ -1,4 +1,4 @@
-import { List, Detail, ActionPanel, Action, Icon, showToast, Toast } from "@raycast/api";
+import { List, Detail, ActionPanel, Action, Icon, showToast, Toast, clearSearchBar } from "@raycast/api";
 import { useState, useMemo } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
@@ -6,8 +6,9 @@ import { saveToHistory } from "./lib/storage";
 export default function MixEmojis() {
   const [firstEmoji, setFirstEmoji] = useState<string | null>(null);
   const [secondEmoji, setSecondEmoji] = useState<string | null>(null);
-  const [step1Search, setStep1Search] = useState("");
-  const [step2Search, setStep2Search] = useState("");
+
+  // Pre-compute all emojis (must be before any conditional returns)
+  const allEmojis = useMemo(() => EmojiKitchen.getAllBaseEmojis(), []);
 
   // Step 3: Show result
   if (firstEmoji && secondEmoji) {
@@ -24,8 +25,6 @@ export default function MixEmojis() {
                 onAction={() => {
                   setFirstEmoji(null);
                   setSecondEmoji(null);
-                  setStep1Search("");
-                  setStep2Search("");
                 }}
               />
             </ActionPanel>
@@ -63,7 +62,6 @@ export default function MixEmojis() {
               icon={Icon.Repeat}
               onAction={() => {
                 setSecondEmoji(null);
-                setStep2Search("");
               }}
               shortcut={{ modifiers: ["cmd"], key: "t" }}
             />
@@ -73,8 +71,6 @@ export default function MixEmojis() {
               onAction={() => {
                 setFirstEmoji(null);
                 setSecondEmoji(null);
-                setStep1Search("");
-                setStep2Search("");
               }}
               shortcut={{ modifiers: ["cmd"], key: "n" }}
             />
@@ -93,10 +89,6 @@ export default function MixEmojis() {
         key={`second-${firstEmoji}`}
         searchBarPlaceholder={`Mix ${firstEmoji} with...`}
         navigationTitle={`Mix with ${firstEmoji}`}
-        searchText={step2Search}
-        onSearchTextChange={setStep2Search}
-        filtering={true}
-        throttle={true}
       >
         {validCombinations.length > 0 ? (
           <List.Section title={`Available Combinations (${validCombinations.length})`}>
@@ -149,15 +141,9 @@ export default function MixEmojis() {
   }
 
   // Step 1: Select first emoji
-  const allEmojis = useMemo(() => EmojiKitchen.getAllBaseEmojis(), []);
-
   return (
     <List
       searchBarPlaceholder="Search first emoji..."
-      searchText={step1Search}
-      onSearchTextChange={setStep1Search}
-      filtering={true}
-      throttle={true}
     >
       {allEmojis.map((item) => (
         <List.Item
@@ -169,9 +155,9 @@ export default function MixEmojis() {
               <Action
                 title="Select"
                 icon={Icon.ArrowRight}
-                 onAction={() => {
+                 onAction={async () => {
                    setFirstEmoji(item.emoji);
-                   setStep2Search("");
+                   await clearSearchBar();
                  }}
               />
             </ActionPanel>
