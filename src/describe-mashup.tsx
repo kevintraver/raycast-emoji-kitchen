@@ -2,10 +2,8 @@ import { List, ActionPanel, Action, showToast, Toast, Icon, clearSearchBar } fro
 import { useState, useMemo, useEffect } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
-
 import { copyResizedImage } from "./lib/image-utils";
-
-import { updateMetadata } from "./lib/metadata-updater";
+import { ensureMetadataExists } from "./lib/metadata";
 
 interface SearchResult {
   emoji1: string;
@@ -100,7 +98,7 @@ export default function DescribeMashup() {
   useEffect(() => {
     const init = async () => {
         try {
-            await updateMetadata();
+            await ensureMetadataExists();
             EmojiKitchen.reload();
         } catch (e) {
             console.error(e);

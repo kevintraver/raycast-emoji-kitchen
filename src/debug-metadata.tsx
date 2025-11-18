@@ -1,7 +1,7 @@
 import { Detail } from "@raycast/api";
 import { useState, useEffect } from "react";
 import fs from "fs";
-import { updateMetadata, getCompactMetadataPath } from "./lib/metadata-updater";
+import { ensureMetadataExists, getCompactMetadataPath } from "./lib/metadata";
 import path from "path";
 import { environment } from "@raycast/api";
 
@@ -35,12 +35,12 @@ export default function DebugMetadata() {
             log += `❌ Compact file missing.\n`;
         }
 
-        log += `\nRunning updateMetadata()...\n`;
+        log += `\nRunning ensureMetadataExists()...\n`;
         setStatus(log);
 
-        await updateMetadata();
+        await ensureMetadataExists();
 
-        log += `✅ updateMetadata() finished.\n`;
+        log += `✅ ensureMetadataExists() finished.\n`;
         
         if (fs.existsSync(compactPath)) {
             const stats = fs.statSync(compactPath);

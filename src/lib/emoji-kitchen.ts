@@ -1,4 +1,4 @@
-import { getEmojiIndex, buildMashupUrl, EmojiIndexData } from "./metadata-manager";
+import { getEmojiIndex, buildMashupUrl, EmojiIndexData } from "./metadata";
 
 class EmojiKitchen {
   private static index: Record<string, EmojiIndexData> | null = null;

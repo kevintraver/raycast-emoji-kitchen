@@ -16,8 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
-import { updateMetadata } from "./lib/metadata-updater";
-
+import { ensureMetadataExists } from "./lib/metadata";
 import { copyResizedImage } from "./lib/image-utils";
 
 // Global callback to reset the root search state
@@ -163,10 +162,10 @@ export default function Command() {
         try {
             // Load initial (might be empty)
             setAllEmojis(EmojiKitchen.getAllBaseEmojis());
-            
-            // Trigger update
-            await updateMetadata();
-            
+
+            // Ensure metadata exists (download + process if needed)
+            await ensureMetadataExists();
+
             // Reload and update state
             EmojiKitchen.reload();
             setAllEmojis(EmojiKitchen.getAllBaseEmojis());
