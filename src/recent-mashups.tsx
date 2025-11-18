@@ -1,51 +1,35 @@
 import { List, ActionPanel, Action, Icon, confirmAlert, showToast, Toast } from "@raycast/api";
-import { useEffect, useState } from "react";
+import { usePromise } from "@raycast/utils";
 import { getHistory, removeFromHistory, clearHistory } from "./lib/storage";
-import { MashupHistoryItem } from "./types";
 
 export default function RecentMashups() {
-  const [history, setHistory] = useState<MashupHistoryItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  async function loadHistory() {
-    const items = await getHistory();
-    setHistory(items);
-    setIsLoading(false);
-  }
+  const { isLoading, data: history, revalidate } = usePromise(getHistory);
 
   async function handleRemove(timestamp: number) {
     await removeFromHistory(timestamp);
-    await loadHistory();
+    await revalidate();
     await showToast({ style: Toast.Style.Success, title: "Removed" });
   }
 
   async function handleClearAll() {
     if (await confirmAlert({ title: "Clear all history?" })) {
       await clearHistory();
-      await loadHistory();
+      await revalidate();
       await showToast({ style: Toast.Style.Success, title: "History cleared" });
     }
   }
 
-  if (isLoading) {
-    return <List isLoading={true} />;
-  }
-
-  if (history.length === 0) {
+  if (history && history.length === 0) {
     return (
-      <List>
+      <List isLoading={isLoading}>
         <List.EmptyView title="No mashups yet" description="Try mixing some emojis first!" icon={Icon.EmojiSad} />
       </List>
     );
   }
 
   return (
-    <List>
-      {history.map((item) => (
+    <List isLoading={isLoading}>
+      {history?.map((item) => (
         <List.Item
           key={item.timestamp}
           title={`${item.leftEmoji} + ${item.rightEmoji}`}
