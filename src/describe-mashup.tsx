@@ -120,7 +120,7 @@ export default function DescribeMashup() {
       await clearSearchBar();
       setDescription("");
     };
-    
+
     clear();
   }, []);
 
