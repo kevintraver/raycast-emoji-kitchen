@@ -60,8 +60,8 @@ function ResultScreen(props: { first: string; second: string }) {
             onAction={async () => {
               if (resetRootSearch) resetRootSearch();
               await clearSearchBar();
-              pop();
-              pop();
+              pop(); // Pop ResultScreen
+              pop(); // Pop SecondEmojiScreen
             }}
           />
         </ActionPanel>
@@ -156,11 +156,6 @@ export default function Command() {
     };
 
     init();
-
-    resetRootSearch = () => setSearchText("");
-    return () => {
-      resetRootSearch = null;
-    };
   }, []);
 
   // Show download progress if metadata is being downloaded
@@ -172,6 +167,14 @@ export default function Command() {
       />
     );
   }
+
+  // Ensure we have a way to clear search when "Start over" is called from children
+  useEffect(() => {
+    resetRootSearch = () => setSearchText("");
+    return () => {
+      resetRootSearch = null;
+    };
+  }, [setSearchText]);
 
   const filtered = allEmojis.filter(
     (i) => i.name.toLowerCase().includes(searchText.toLowerCase()) || i.emoji.includes(searchText),
