@@ -11,11 +11,6 @@
 -   **Recent Mashups:** Easily access and reuse your previously created emoji mashups from your history.
 -   **Copy & Paste:** Quickly copy your creation to the clipboard and paste it anywhere.
 
-## 🚀 Installation
-
-1.  Make sure you have [Raycast](https://www.raycast.com/) installed on your computer.
-2.  Open Raycast and go to the "Store".
-3.  Search for "Emoji Kitchen" and click "Install".
 
 ## 💻 Development
 
