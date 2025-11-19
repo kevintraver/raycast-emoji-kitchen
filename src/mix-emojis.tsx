@@ -13,10 +13,10 @@ import {
   Toast,
   useNavigation,
 } from "@raycast/api";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { saveToHistory } from "./lib/storage";
-import { ensureMetadataExists, getCompactMetadataPath } from "./lib/metadata";
+import { ensureMetadataExists } from "./lib/metadata";
 import { copyResizedImage } from "./lib/image-utils";
 
 // Global callback to reset the root search state
@@ -108,6 +108,7 @@ function ResultScreen(props: { first: string; second: string }) {
 
 function SecondEmojiScreen(props: { firstEmoji: string }) {
   const { firstEmoji } = props;
+  const { pop } = useNavigation();
   const [searchText, setSearchText] = useState("");
   const validCombinations = EmojiKitchen.getValidCombinations(firstEmoji);
   const filtered = validCombinations.filter(
@@ -133,6 +134,16 @@ function SecondEmojiScreen(props: { firstEmoji: string }) {
                 title="Select This Emoji"
                 icon={Icon.Checkmark}
                 target={<ResultScreen first={firstEmoji} second={item.emoji} />}
+              />
+              <Action
+                title="Start over"
+                icon={Icon.RotateAntiClockwise}
+                shortcut={{ modifiers: ["cmd"], key: "n" }}
+                onAction={async () => {
+                  if (resetRootSearch) resetRootSearch();
+                  await clearSearchBar();
+                  pop();
+                }}
               />
             </ActionPanel>
           }
@@ -222,6 +233,15 @@ export default function Command() {
                 icon={Icon.ArrowRight}
                 target={<SecondEmojiScreen firstEmoji={item.emoji} />}
                 onPush={async () => await clearSearchBar()}
+              />
+              <Action
+                title="Start over"
+                icon={Icon.RotateAntiClockwise}
+                shortcut={{ modifiers: ["cmd"], key: "n" }}
+                onAction={async () => {
+                  setSearchText("");
+                  await clearSearchBar();
+                }}
               />
             </ActionPanel>
           }
