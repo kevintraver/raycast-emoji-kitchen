@@ -1,6 +1,7 @@
-import { List, ActionPanel, Action, Icon, confirmAlert, showToast, Toast } from "@raycast/api";
+import { List, ActionPanel, Action, Icon, confirmAlert, showToast, Toast, Clipboard } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 import { getHistory, removeFromHistory, clearHistory } from "./lib/storage";
+import { copyResizedImage, downloadAndCopyImage } from "./lib/image-utils";
 
 export default function RecentMashups() {
   const { isLoading, data: history, revalidate } = usePromise(getHistory);
@@ -28,24 +29,84 @@ export default function RecentMashups() {
   }
 
   return (
-    <List isLoading={isLoading}>
+    <List isLoading={isLoading} isShowingDetail>
       {history?.map((item) => (
         <List.Item
           key={item.timestamp}
           title={`${item.leftEmoji} + ${item.rightEmoji}`}
-          icon={{ source: item.mashupUrl }}
+          icon={Icon.Clock}
           subtitle={formatTimeAgo(item.timestamp)}
+          detail={
+            <List.Item.Detail
+              markdown={`![Mashup](${item.mashupUrl})`}
+              metadata={
+                <List.Item.Detail.Metadata>
+                  <List.Item.Detail.Metadata.Label title="Date" text={new Date(item.timestamp).toLocaleString()} />
+                  <List.Item.Detail.Metadata.Label title="Emojis" text={`${item.leftEmoji} + ${item.rightEmoji}`} />
+                </List.Item.Detail.Metadata>
+              }
+            />
+          }
           actions={
             <ActionPanel>
-              <Action.CopyToClipboard content={item.mashupUrl} />
-              <Action.OpenInBrowser url={item.mashupUrl} />
               <Action
-                title="Remove"
-                onAction={() => handleRemove(item.timestamp)}
-                icon={Icon.Trash}
-                shortcut={{ modifiers: ["cmd"], key: "delete" }}
+                title="Copy Image"
+                icon={Icon.Clipboard}
+                onAction={async () => {
+                  await downloadAndCopyImage(item.mashupUrl, "Image", {
+                    emoji1: item.leftEmoji,
+                    emoji2: item.rightEmoji,
+                  });
+                  revalidate();
+                }}
               />
-              <Action title="Clear All" onAction={handleClearAll} icon={Icon.Trash} style={Action.Style.Destructive} />
+              <Action
+                title="Paste Image"
+                icon={Icon.Pencil}
+                shortcut={{ modifiers: ["cmd"], key: "enter" }}
+                onAction={async () => {
+                  const file = await downloadAndCopyImage(item.mashupUrl, "Image", {
+                    emoji1: item.leftEmoji,
+                    emoji2: item.rightEmoji,
+                  });
+                  await Clipboard.paste({ file });
+                  revalidate();
+                }}
+              />
+              <Action
+                title="Copy Small Sticker (256Px)"
+                icon={Icon.Image}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+                onAction={async () => {
+                  await copyResizedImage(item.mashupUrl, {
+                    width: 256,
+                    emoji1: item.leftEmoji,
+                    emoji2: item.rightEmoji,
+                  });
+                  revalidate();
+                }}
+              />
+              <Action.CopyToClipboard
+                title="Copy URL"
+                content={item.mashupUrl}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "u" }}
+              />
+              <Action.OpenInBrowser url={item.mashupUrl} />
+              <ActionPanel.Section>
+                <Action
+                  title="Remove"
+                  onAction={() => handleRemove(item.timestamp)}
+                  icon={Icon.Trash}
+                  shortcut={{ modifiers: ["cmd"], key: "delete" }}
+                  style={Action.Style.Destructive}
+                />
+                <Action
+                  title="Clear All"
+                  onAction={handleClearAll}
+                  icon={Icon.Trash}
+                  style={Action.Style.Destructive}
+                />
+              </ActionPanel.Section>
             </ActionPanel>
           }
         />

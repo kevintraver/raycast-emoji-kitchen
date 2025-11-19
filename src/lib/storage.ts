@@ -13,7 +13,16 @@ export async function saveToHistory(leftEmoji: string, rightEmoji: string, mashu
     timestamp: Date.now(),
   };
 
-  const updated = [newItem, ...history].slice(0, MAX_HISTORY);
+  // Remove duplicates (same combination) to bump to top
+  const filtered = history.filter(
+    (item) =>
+      !(
+        (item.leftEmoji === leftEmoji && item.rightEmoji === rightEmoji) ||
+        (item.leftEmoji === rightEmoji && item.rightEmoji === leftEmoji)
+      ),
+  );
+
+  const updated = [newItem, ...filtered].slice(0, MAX_HISTORY);
   await LocalStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
 }
 

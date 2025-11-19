@@ -56,3 +56,41 @@ export async function copyResizedImage(
     });
   }
 }
+
+export async function downloadAndCopyImage(
+  url: string,
+  title: string = "Image",
+  historyContext?: { emoji1: string; emoji2: string },
+) {
+  try {
+    await showToast({ style: Toast.Style.Animated, title: `Downloading ${title}...` });
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const buffer = await blob.arrayBuffer();
+
+    const tempFile = path.join(os.tmpdir(), "emoji-mashup.png");
+    fs.writeFileSync(tempFile, Buffer.from(buffer));
+
+    await Clipboard.copy({ file: tempFile });
+
+    if (historyContext) {
+      await saveToHistory(historyContext.emoji1, historyContext.emoji2, url);
+    }
+
+    await showToast({ style: Toast.Style.Success, title: `Copied ${title}!` });
+    return tempFile;
+  } catch (error) {
+    await showToast({
+      style: Toast.Style.Failure,
+      title: `Failed to Copy ${title}`,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
