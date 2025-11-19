@@ -63,7 +63,6 @@ export default function RecentMashups() {
               <Action
                 title="Paste Image"
                 icon={Icon.Pencil}
-                shortcut={{ modifiers: ["cmd"], key: "enter" }}
                 onAction={async () => {
                   const file = await downloadAndCopyImage(item.mashupUrl, "Image", {
                     emoji1: item.leftEmoji,
@@ -97,7 +96,7 @@ export default function RecentMashups() {
                   title="Remove"
                   onAction={() => handleRemove(item.timestamp)}
                   icon={Icon.Trash}
-                  shortcut={{ modifiers: ["cmd"], key: "delete" }}
+                  shortcut={{ modifiers: ["ctrl"], key: "x" }}
                   style={Action.Style.Destructive}
                 />
                 <Action
