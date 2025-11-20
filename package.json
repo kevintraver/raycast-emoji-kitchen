@@ -26,6 +26,13 @@
       "mode": "view"
     },
     {
+      "name": "ai-mix",
+      "title": "AI Mix Emojis",
+      "subtitle": "Emoji Kitchen",
+      "description": "Describe an emoji mashup in natural language",
+      "mode": "view"
+    },
+    {
       "name": "recent-mashups",
       "title": "Recent Mashups",
       "subtitle": "Emoji Kitchen",

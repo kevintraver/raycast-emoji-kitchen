@@ -1,6 +1,7 @@
 import { launchCommand, LaunchType } from "@raycast/api";
 import EmojiKitchen from "../lib/emoji-kitchen";
 import { ensureMetadataExists } from "../lib/metadata";
+import { saveToHistory } from "../lib/storage";
 
 type Input = {
   /**
@@ -27,6 +28,8 @@ export default async function tool(input: Input): Promise<string> {
   if (!result) {
     return `No mashup available for ${input.emoji1} + ${input.emoji2}. Try different emojis.`;
   }
+
+  await saveToHistory(input.emoji1, input.emoji2, result.url);
 
   await launchCommand({
     name: "mix-emojis",
