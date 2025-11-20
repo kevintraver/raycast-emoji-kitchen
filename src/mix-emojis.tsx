@@ -1,8 +1,13 @@
-import { Action, ActionPanel, clearSearchBar, Detail, Icon, List, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, clearSearchBar, Detail, Icon, LaunchProps, List, popToRoot, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
 import EmojiKitchen from "./lib/emoji-kitchen";
 import { ensureMetadataExists } from "./lib/metadata";
-import { copyResizedImage, downloadAndCopyImage } from "./lib/image-utils";
+import { MashupResult } from "./components/MashupResult";
+
+interface LaunchContext {
+  emoji1?: string;
+  emoji2?: string;
+}
 
 // Global callback to reset the root search state
 let resetRootSearch: (() => void) | null = null;
@@ -10,43 +15,13 @@ let resetRootSearch: (() => void) | null = null;
 function ResultScreen(props: { first: string; second: string }) {
   const { first, second } = props;
   const { pop } = useNavigation();
-  const mashupData = EmojiKitchen.getMashupData(first, second);
-
-  const markdown = mashupData ? `![Emoji Mashup](${mashupData.url}?raycast-height=350)` : "# No mashup available 😢";
 
   return (
-    <Detail
-      navigationTitle={`${first} + ${second}`}
-      markdown={markdown}
-      actions={
-        <ActionPanel>
-          {mashupData && (
-            <>
-              <Action
-                title="Copy Mashup Image"
-                icon={Icon.Clipboard}
-                onAction={async () => {
-                  await downloadAndCopyImage(mashupData.url, "Mashup Image", {
-                    emoji1: first,
-                    emoji2: second,
-                  });
-                }}
-              />
-              <Action
-                title="Copy Small Sticker (256Px)"
-                icon={Icon.Image}
-                shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
-                onAction={() =>
-                  copyResizedImage(mashupData.url, {
-                    width: 256,
-                    emoji1: first,
-                    emoji2: second,
-                  })
-                }
-              />
-            </>
-          )}
-          {mashupData && <Action.OpenInBrowser title="Open in Browser" url={mashupData.url} />}
+    <MashupResult
+      emoji1={first}
+      emoji2={second}
+      extraActions={
+        <>
           <Action
             title="Back"
             icon={Icon.ArrowLeft}
@@ -64,7 +39,7 @@ function ResultScreen(props: { first: string; second: string }) {
               pop(); // Pop SecondEmojiScreen
             }}
           />
-        </ActionPanel>
+        </>
       }
     />
   );
@@ -127,11 +102,12 @@ function SecondEmojiScreen(props: { firstEmoji: string }) {
   );
 }
 
-export default function Command() {
+export default function Command(props: LaunchProps<{ launchContext: LaunchContext }>) {
   const [searchText, setSearchText] = useState("");
   const [allEmojis, setAllEmojis] = useState<Array<{ emoji: string; name: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
+  const [directResult, setDirectResult] = useState<{ emoji1: string; emoji2: string } | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -147,6 +123,12 @@ export default function Command() {
         // Reload and update state
         EmojiKitchen.reload();
         setAllEmojis(EmojiKitchen.getAllBaseEmojis());
+
+        // Check if launched with context (from AI tool)
+        const context = props.launchContext;
+        if (context?.emoji1 && context?.emoji2) {
+          setDirectResult({ emoji1: context.emoji1, emoji2: context.emoji2 });
+        }
       } catch (error) {
         console.error(error);
         setDownloadStatus(`Error: ${error}`);
@@ -156,7 +138,15 @@ export default function Command() {
     };
 
     init();
-  }, []);
+  }, [props.launchContext]);
+
+  // Ensure we have a way to clear search when "Start over" is called from children
+  useEffect(() => {
+    resetRootSearch = () => setSearchText("");
+    return () => {
+      resetRootSearch = null;
+    };
+  }, [setSearchText]);
 
   // Show download progress if metadata is being downloaded
   if (downloadStatus) {
@@ -168,13 +158,23 @@ export default function Command() {
     );
   }
 
-  // Ensure we have a way to clear search when "Start over" is called from children
-  useEffect(() => {
-    resetRootSearch = () => setSearchText("");
-    return () => {
-      resetRootSearch = null;
-    };
-  }, [setSearchText]);
+  // Show result directly if launched with context (from AI tool)
+  if (directResult) {
+    return (
+      <MashupResult
+        emoji1={directResult.emoji1}
+        emoji2={directResult.emoji2}
+        extraActions={
+          <Action
+            title="Back to AI Chat"
+            icon={Icon.ArrowLeft}
+            shortcut={{ modifiers: ["cmd"], key: "n" }}
+            onAction={() => popToRoot()}
+          />
+        }
+      />
+    );
+  }
 
   const filtered = allEmojis.filter(
     (i) => i.name.toLowerCase().includes(searchText.toLowerCase()) || i.emoji.includes(searchText),

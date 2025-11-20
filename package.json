@@ -19,10 +19,10 @@
       "mode": "view"
     },
     {
-      "name": "describe-mashup",
-      "title": "Describe Emoji Mashup",
+      "name": "random-mashup",
+      "title": "Random Mashup",
       "subtitle": "Emoji Kitchen",
-      "description": "Use AI to find emoji combinations from descriptions",
+      "description": "Get a random emoji mashup - surprise me!",
       "mode": "view"
     },
     {
@@ -38,6 +38,27 @@
       "subtitle": "Emoji Kitchen",
       "description": "Debug metadata download and processing",
       "mode": "view"
+    }
+  ],
+  "tools": [
+    {
+      "name": "mix-emoji-tool",
+      "title": "Mix Emojis",
+      "description": "Create an emoji mashup by combining two emojis using Google's Emoji Kitchen. Users can describe emojis by name (smile, heart, cat) or by concept (robot who needs caffeine, angry love, sleepy ghost).",
+      "input": {
+        "type": "object",
+        "properties": {
+          "emoji1": {
+            "type": "string",
+            "description": "The first emoji to combine (as an emoji character like 😀 or ❤️)"
+          },
+          "emoji2": {
+            "type": "string",
+            "description": "The second emoji to combine (as an emoji character like 😀 or ❤️)"
+          }
+        },
+        "required": ["emoji1", "emoji2"]
+      }
     }
   ],
   "dependencies": {
